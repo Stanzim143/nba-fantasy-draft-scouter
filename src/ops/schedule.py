@@ -340,7 +340,7 @@ def main(argv: Sequence[str] | None = None, *, runner: Runner = default_runner, 
          python_exe: Path | None = None, out: Callable[[str], None] = print, local_tz: tzinfo | None = None,
          now: datetime | None = None) -> int:
     a = build_parser().parse_args(argv)
-    if runner is default_runner and sys.platform != "win32":
+    if runner is default_runner and sys.platform != "win32" and not (a.action == "install" and a.dry_run):
         print("error: `schedule` manages Windows Task Scheduler entries only. On macOS/Linux run the same\n"
               "jobs from cron or systemd, e.g. `30 9 * * * cd /path/to/repo && .venv/bin/python -m src.ops.nightly`\n"
               "(daily pre-draft job: `python -m src.ops.daily_refresh`). See docs/inseason.md.", file=sys.stderr)

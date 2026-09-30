@@ -216,3 +216,10 @@ def test_xml_datetime_end_and_end_before_start_error():
     with pytest.raises(sc.ScheduleError):
         sc.build_task_xml(python_exe=Path("p"), repo=Path("r"), data_dir=Path("d"), times=["07:30"], start=date(2026, 9, 26),
                           end=datetime(2026, 9, 1, 7, 0), draft_date=None)
+
+
+def test_dry_run_install_works_off_windows_but_real_install_is_refused(tmp_path, monkeypatch):
+    monkeypatch.setattr("sys.platform", "linux")
+    xml, _ = install_dry(tmp_path)
+    assert xml is not None
+    assert sc.main(["install"]) == 2
