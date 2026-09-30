@@ -1,0 +1,95 @@
+==Transactions==
+{{Main|List of 2016–17 NBA season transactions}}
+
+===Trades===
+{| class="wikitable sortable sortable" style="text-align: center"
+|- style="background:#eee;"
+| style="width:12%" | June 23, 2016
+|  style="width:44%; vertical-align:top;"| To '''Golden State Warriors'''<hr />• Draft rights to {{flagicon|USA}} [[Patrick McCaw]]<ref>{{cite web|url=http://www.nba.com/warriors/news/warriors-select-vanderbilt-center-damian-jones-30th-overall-pick-2016-nba-draft/|title=Golden State acquires draft rights to Patrick McCaw from Milwaukee for cash considerations|work=nba.com/warriors|date=June 23, 2016|access-date=June 23, 2016}}</ref><ref>{{cite web|url=http://www.nba.com/warriors/news/warriors-sign-mccaw-20160706/|title=Warriors sign rookie guard Patrick McCaw to contract|work=nba.com/warriors|date=July 6, 2016|access-date=July 6, 2016}}</ref>
+|  style="width:44%; vertical-align:top;"| To '''[[Milwaukee Bucks]]'''<hr />• Cash considerations
+|- style="background:#eee;"
+| style="width:12%" | July 7, 2016
+|  style="width:44%; vertical-align:top;"| To '''Golden State Warriors'''<hr />• Future 2nd round-pick<ref>{{cite web|url=http://www.nba.com/warriors/news/bogut-traded-dallas-20160707|title=Warriors trade center Andrew Bogut to Dallas|work=nba.com/warriors|date=July 7, 2016|access-date=July 7, 2016}}</ref>
+|  style="width:44%; vertical-align:top;"| To '''[[Dallas Mavericks]]'''<hr />• {{flagicon|AUS}} [[Andrew Bogut]]<br />• Future conditional 2nd round-pick
+|}
+
+===Free agency===
+
+====Re-signed====
+{| class="wikitable sortable sortable"
+! style="background:#006BB6; color:#fdb927" width="10%"| Player
+! style="background:#006BB6; color:#fdb927" width="10%" | Signed
+|- style="text-align: center"
+| {{flagicon|USA}} [[Ian Clark (basketball)|Ian Clark]]<ref>{{cite web|url=http://www.nba.com/warriors/news/warriors-re-sign-free-agent-guard-ian-clark|title=Warriors re-sign free agent guard Ian Clark|work=nba.com/warriors|date=July 8, 2016|access-date=July 8, 2016}}</ref>
+| 1-year contract worth $980,431
+|- style="text-align: center"
+| {{flagicon|USA}} [[James Michael McAdoo]]<ref>{{cite web|url=http://www.nba.com/warriors/news/warriors-sign-mcadoo-20160713|title=Warriors re-sign free agent forward James Michael McAdoo|work=nba.com/warriors|date=July 13, 2016|access-date=July 13, 2016}}</ref>
+| 1-year contract worth $980,431
+|- style="text-align: center"
+| {{flagicon|BRA}} [[Anderson Varejão]]<ref>{{cite web|url=http://www.nba.com/warriors/warriors-re-sign-free-agent-center-anderson-varejao|title=Warriors re-sign free agent center Anderson Varejão|work=nba.com/warriors|date=July 17, 2016|access-date=July 17, 2016}}</ref>
+| 1-year contract worth $980,431
+|}
+
+====Additions====
+{| class="wikitable sortable sortable" style="text-align: center"
+! style="background:#006BB6; color:#fdb927" width="10%"| Player
+! style="background:#006BB6; color:#fdb927" width="10%" | Signed
+! style="background:#006BB6; color:#fdb927" width="10%"| Former team
+|- style="text-align: center"
+| {{flagicon|USA}} [[Kevin Durant]]<ref>{{cite web|url=http://www.nba.com/warriors/news/kevin-durant-signing-20160707|title=Warriors sign free agent forward Kevin Durant|work=nba.com/warriors|date=July 7, 2016|access-date=July 7, 2016}}</ref>
+| 2-year contract worth $54.3&nbsp;million
+| [[Oklahoma City Thunder]]
+|- style="text-align: center"
+| {{flagicon|USA}} [[David West (basketball)|David West]]<ref>{{cite web|url=http://www.nba.com/warriors/news/warriors-sign-west-20160709|title=Warriors sign free agent forward David West|work=nba.com/warriors|date=July 9, 2016|access-date=July 9, 2016}}</ref>
+| 1-year contract worth $1.55&nbsp;million
+| [[San Antonio Spurs]]
+|- style="text-align: center"
+| {{flagicon|GEO}} [[Zaza Pachulia]]<ref>{{cite web|url=http://www.nba.com/warriors/news/warriors-sign-pachulia-20160712|title=Warriors sign free agent center Zaza Pachulia|work=nba.com/warriors|date=July 12, 2016|access-date=July 12, 2016}}</ref>
+| 1-year contract worth $2.9&nbsp;million
+| [[Dallas Mavericks]]
+|- style="text-align: center"
+| {{flagicon|USA}} [[JaVale McGee]]
+| 1-year contract worth $980,431
+| [[Dallas Mavericks]]
+|- style="text-align: center"
+| {{flagicon|USA}} [[Brianté Weber]]<ref>{{cite web|url=http://www.nba.com/warriors/news/warriors-weber-20170204|title=Warriors sign Brianté Weber to 10-day contract|work=nba.com/warriors|date=February 4, 2017|access-date=February 4, 2017}}</ref><ref>{{cite web|url=http://www.nba.com/warriors/news/weber-release-20170214|title=Warriors sign Briante Weber to second 10-day contract|work=nba.com/warriors|date=February 14, 2017|access-date=February 14, 2017}}</ref>
+| 10-day contract worth $51,449<br />12-day contract worth $61,739
+| [[Sioux Falls Skyforce]] {{small|([[NBA D-League]])}}
+|- style="text-align: center"
+| {{flagicon|USA}} [[Matt Barnes]]<ref>{{cite web|url=http://www.nba.com/warriors/news/matt-barnes-signed-20170302|title=Warriors sign Matt Barnes|work=nba.com/warriors|date=March 2, 2017|access-date=March 2, 2017}}</ref>
+|
+| [[Sacramento Kings]]
+|}
+
+====Subtractions====
+{| class="wikitable sortable sortable" style="text-align: center"
+! style="background:#006BB6; color:#fdb927" width="10%"| Player
+! style="background:#006BB6; color:#fdb927" width="10%" | Reason left
+! style="background:#006BB6; color:#fdb927" width="10%"| New team
+|- style="text-align: center"
+| {{flagicon|USA}} [[Harrison Barnes]]<ref>{{cite web|url=http://www.mavs.com/mavs-sign-harrison-barnes-to-offer-sheet/|title=Mavs sign Harrison Barnes to offer sheet|work=mavs.com|date=July 7, 2016|access-date=July 7, 2016}}</ref>
+| 4-year contract worth $94&nbsp;million
+| [[Dallas Mavericks]]
+|- style="text-align: center"
+| {{flagicon|NGA}} [[Festus Ezeli]]<ref>{{cite web|url=http://www.nba.com/blazers/trail-blazers-sign-festus-ezeli|title=Trail Blazers sign Festus Ezeli|work=nba.com/blazers|date=July 8, 2016|access-date=July 8, 2016}}</ref>
+| 2-year contract worth $15.2&nbsp;million
+| [[Portland Trail Blazers]]
+|- style="text-align: center"
+| {{flagicon|USA}} [[Brandon Rush]]<ref>{{cite web|url=http://www.nba.com/timberwolves/timberwolves-sign-guard/forward-brandon-rush|title=Timberwolves sign guard/forward Brandon Rush|work=nba.com/timberwolves|date=July 8, 2016|access-date=July 8, 2016}}</ref>
+| 1-year contract worth $3.5&nbsp;million
+| [[Minnesota Timberwolves]]
+|- style="text-align: center"
+| {{flagicon|USA}} [[Marreese Speights]]<ref>{{cite web|url=http://www.nba.com/clippers/news/clippers-sign-marreese-speights|title=Clippers sign Marreese Speights|work=nba.com/clippers|date=July 12, 2016|access-date=July 12, 2016}}</ref>
+| 1-year contract worth $980,431
+| [[Los Angeles Clippers]]
+|- style="text-align: center"
+| {{flagicon|BRA}} [[Leandro Barbosa]]<ref>{{cite web|url=http://www.nba.com/suns/press-release/suns-sign-leandro-barbosa-multiyear-deal|title=Suns sign Leandro Barbosa to multiyear deal|work=nba.com/suns|date=July 19, 2016|access-date=July 19, 2016}}</ref>
+| 2-year contract worth $8&nbsp;million
+| [[Phoenix Suns]]
+|- style="text-align: center"
+| {{flagicon|BRA}} [[Anderson Varejão]]<ref>{{cite web|url=http://www.nba.com/warriors/news/varejao-waived-20170203|title=Warriors Waive Anderson Varejão|work=nba.com/warriors|date=February 3, 2017|access-date=February 3, 2017}}</ref>
+| Waived
+| {{N/A}}
+|}
+
+==Awards==

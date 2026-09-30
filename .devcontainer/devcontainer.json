@@ -1,0 +1,7 @@
+{
+  "name": "nba-fantasy",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "postCreateCommand": "pip install -c constraints.txt -e '.[dev]' || pip install -e '.[dev]'",
+  "forwardPorts": [8501],
+  "containerEnv": { "NBA_DATA_DIR": "/workspaces/data" }
+}

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Data and licensing questions
+    url: https://github.com/Stanzim143/nba-fantasy-draft-scouter/blob/main/DATA.md
+    about: The repo ships no data by design; read DATA.md before asking about datasets.

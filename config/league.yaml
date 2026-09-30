@@ -1,0 +1,68 @@
+# League config for "Example League" (ESPN Fantasy Basketball, 2026-27).
+# Source: ESPN League Settings page, copied 2026-09-22. teams: confirmed live 2026-09-23, see below.
+league:
+  name: Example League
+  platform: espn
+  season: 2026-27
+  format: h2h_points
+  teams: 14                    # 2026-09-30: the live public ESPN league now reports settings.size == 14 (13 real
+                                # managers + 1 placeholder team; the league hopes to find a 14th manager). The draft is
+                                # therefore a 14-slot snake, and replacement level is set for 14 rosters. Was 13, confirmed
+                                # 2026-09-23. See docs/adr/0008-espn-league-sync.md.
+  draft:
+    type: snake
+    date: 2026-10-17           # local calendar date in `timezone` (set 2026-09-26, user: "the draft is on 2026-10-17 in the
+                               # morning NZ time"). That is the EVENING of 2026-10-16 in CET/CEST (UTC+2).
+    timezone: Pacific/Auckland # NZDT = UTC+13 from 2026-09-27; CEST (UTC+2) until 2026-10-25
+    start_utc: "2026-10-16T18:00:00Z"   # EARLIEST plausible start = 07:00 NZDT 2026-10-17 = 20:00 CEST 2026-10-16. The exact
+                               # clock time is not known (consistent window ~18:00-20:00Z); the pre-draft refresh schedule
+                               # (ADR 0014) plans against this earliest instant. Refine when the manager confirms the time.
+    seconds_per_pick: 90
+    order: manual              # set by league manager
+    pick_trading: true
+  roster:
+    size: 13                   # 10 starters + 3 bench; IR is extra
+    starters:
+      PG: 1
+      SG: 1
+      SF: 1
+      PF: 1
+      C: 1
+      G: 1                     # PG/SG eligible
+      F: 1                     # SF/PF eligible
+      UTIL: 3                  # any position
+    bench: 3
+    ir: 1
+  lineups: daily               # locks individually at scheduled game time
+  acquisition:
+    system: waivers
+    season_limit: null         # no limit
+    matchup_limit: 7           # per 7-day matchup
+    waiver_period_days: 1
+  trades:
+    limit: null
+    deadline: 2027-03-13
+    review_days: 2
+    votes_to_veto: 4
+  keepers: false
+  schedule:
+    weeks_per_matchup: 1
+    regular_season_matchups: 20
+    playoff_teams: 8
+    playoff_rounds_weeks: [1, 1, 1]
+    playoff_reseeding: false
+
+# Per-stat fantasy point weights, exactly as shown in ESPN scoring settings.
+# No DD/TD or threshold bonuses are configured.
+scoring:
+  PTS: 1
+  REB: 1
+  AST: 2
+  STL: 4
+  BLK: 4
+  TO: -2
+  FGM: 2
+  FGA: -1
+  FTM: 1
+  FTA: -1
+  3PM: 1

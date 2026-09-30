@@ -1,0 +1,151 @@
+== Transactions ==
+{{main|List of 2020–21 NBA season transactions}}
+
+===Overview===
+{| border=1 style="border-collapse:collapse; background-color:#eeeeee" bordercolor="#DFDFDF" cellpadding="5"
+| valign="top"|'''Players Added''' <hr>
+'''Via draft'''
+'''Via trade'''
+'''Via free agency'''
+| valign="top"|'''Players Lost''' <hr>
+'''Via free agency'''
+'''Via retirement'''
+'''Waived'''
+|}
+
+===Trades===
+{| border=1 style="border-collapse:collapse; text-align: center; width: 100%" bordercolor="#DFDFDF"  cellpadding="5"
+|- style="background:#eee;"
+| style="width:12%" | November 18, 2020<ref>{{cite web|title=Lakers Acquire Dennis Schröder|url=https://www.nba.com/lakers/releases/lakers-acquire-dennis-schroder/|website=NBA.com|date=November 18, 2020|access-date=November 19, 2020}}</ref>
+| style="width:30%" valign="top" | To '''[[Los Angeles Lakers]]'''<hr>[[Dennis Schröder]]
+| style="width:30%" valign="top" | To '''[[Oklahoma City Thunder]]'''<hr>[[Danny Green (basketball)|Danny Green]]<br>Draft rights to [[Jaden McDaniels]] (#28)
+|- 
+| style="width:12%" | November 23, 2020<ref name="McGee">{{cite web|title=Cavaliers Acquire JaVale McGee from Los Angeles Lakers|url=https://www.nba.com/cavaliers/releases/mcgee-trade-201123|website=NBA.com|date=November 23, 2020|access-date=November 23, 2020}}</ref>
+| style="width:30%" valign="top" |To '''[[Los Angeles Lakers]]'''<hr>[[Alfonzo McKinnie]]<br>[[Jordan Bell]]
+| style="width:30%" valign="top" |To '''[[Cleveland Cavaliers]]'''<hr>[[JaVale McGee]]<br>2026 LAL second-round pick
+|}
+
+===Free agency===
+
+====Re-signed====
+{| class="wikitable sortable sortable" style="text-align: center"
+! style="{{NBA color cell|Los Angeles Lakers}}" width="5%"| Date
+! style="{{NBA color cell|Los Angeles Lakers}}" width="10%"| Player
+! style="{{NBA color cell|Los Angeles Lakers}}" width="10%"| Contract terms
+! style="{{NBA color cell|Los Angeles Lakers}}" width="1%" class="unsortable" | Ref.
+|-
+|November 22
+|[[Kentavious Caldwell-Pope]]
+| 3 year $40 million deal
+|<ref>{{cite web|title=Lakers re-sign Kentavious Caldwell-Pope|url=https://www.nba.com/lakers/releases/lakers-resign-kentavious-caldwell-pope-free-agency2021|website=NBA.com|date=November 22, 2020|access-date=November 22, 2020}}</ref>
+|-
+|November 23
+|[[Markieff Morris]]
+| 1 year $1.4 million deal
+|<ref>{{cite web|title=Lakers re-sign Markieff Morris|url=https://www.nba.com/lakers/releases/lakers-re-sign-markieff-morris|website=NBA.com|date=November 23, 2020|access-date=November 23, 2020}}</ref>
+|-
+|November 26
+|[[Kostas Antetokounmpo]]
+| [[Two-way contract]]
+|<ref>{{cite web|title=Lakers re-sign Kostas Antetokounmpo|url=https://www.nba.com/lakers/releases/lakers-resign-kostas-antetokounmpo-free-agency2021|website=NBA.com|date=November 26, 2020|access-date=November 26, 2020}}</ref>
+|-
+|December 1
+|[[Jared Dudley]]
+| 1 year $2.6 million deal
+|<ref>{{cite web|title=Lakers re-sign Jared Dudley|url=https://www.nba.com/lakers/releases/lakers-resign-jared-dudley-free-agency2021|website=NBA.com|date=December 1, 2020|access-date=December 1, 2020}}</ref>
+|-
+|December 2
+|[[LeBron James]]
+| 2 year $85 million deal
+|<ref>{{cite web|title=LeBron James extends, reportedly for two years, with Lakers|url= https://www.nba.com/news/lebron-james-lakers-max-extension |website=NBA.com|date=December 2, 2020|access-date=December 27, 2020}}</ref>
+|-
+|December 3
+|[[Anthony Davis]]
+| 5 year $190 million deal
+|<ref>{{cite web|title=Lakers re-sign Anthony Davis|url=https://www.nba.com/lakers/releases/lakers-re-sign-anthony-davis-free-agency2021|website=NBA.com|date=December 3, 2020|access-date=December 3, 2020}}</ref>
+|-
+|December 4
+|[[Quinn Cook]]
+| 1 year $1.7 million deal
+|<ref>{{cite web|title=Lakers re-sign Quinn Cook|url=https://www.nba.com/lakers/releases/lakers-re-signs-quinn-cook-free-agency2021|website=NBA.com|date=December 4, 2020|access-date=December 4, 2020}}</ref>
+|-
+|December 20
+|[[Kyle Kuzma]]
+| 3 year $40 million deal
+|<ref>{{cite web|title=Lakers' Kyle Kuzma signs 3-year, $40 million extension|url=https://www.nba.com/news/report-lakers-kyle-kuzma-agrees-to-3-year-40-million-extension|website=NBA.com|date=December 20, 2020|access-date=December 27, 2020}}</ref>
+|-
+|}
+
+====Additions====
+{| class="wikitable sortable sortable" style="text-align: center"
+! style="{{NBA color cell|Los Angeles Lakers}}" width="5%"| Date
+! style="{{NBA color cell|Los Angeles Lakers}}" width="10%"| Player
+! style="{{NBA color cell|Los Angeles Lakers}}" width="10%"| Contract terms
+! style="{{NBA color cell|Los Angeles Lakers}}" width="10%"| Former team
+! style="{{NBA color cell|Los Angeles Lakers}}" width="1%" class="unsortable" | Ref.
+|-
+|November 22
+|[[Montrezl Harrell]]
+| 2 year $19 million deal
+|[[Los Angeles Clippers]]
+|<ref>{{cite web|title=Lakers Sign Montrezl Harrell|url=https://www.nba.com/lakers/releases/lakers-sign-montrezl-harrell-free-agency2021|website=NBA.com|date=November 22, 2020|access-date=November 22, 2020}}</ref>
+|-
+|November 22
+|[[Wesley Matthews]]
+| 1 year $3.6 million deal
+|[[Milwaukee Bucks]]
+|<ref>{{cite web|title=Lakers Sign Wesley Matthews|url=https://www.nba.com/lakers/releases/lakers-sign-wesley-matthews-2021-free-agency|website=NBA.com|date=November 22, 2020|access-date=November 22, 2020}}</ref>
+|-
+|November 24
+|[[Marc Gasol]]
+|2 year $5.3 million deal
+|[[Toronto Raptors]]
+|<ref>{{Cite web|title=Veteran center Marc Gasol signs with Lakers {{!}} NBA.com|url=https://www.nba.com/news/report-marc-gasol-to-sign-with-lakers|access-date=2020-11-25|website=www.nba.com}}</ref>
+|-
+|March 28
+|[[Andre Drummond]]
+|1 year $794,536 deal
+|[[Cleveland Cavaliers]]
+|<ref>{{cite web|title=Lakers sign Andre Drummond|url=https://www.nba.com/lakers/releases/lakers-sign-andre-drummond-210328|access-date=2021-03-28|website=www.nba.com}}</ref>
+|-
+|April 6
+|[[Ben McLemore]]
+|1 year $455,000 deal
+|[[Houston Rockets]]
+|<ref>{{cite web|title=Lakers sign Ben McLemore|url=https://www.nba.com/lakers/releases/210406-lakers-sign-ben-mclemore|access-date=2021-04-06|website=www.nba.com}}</ref>
+|}
+
+====Subtractions====
+{| class="wikitable sortable sortable" style="text-align: center"
+! style="{{NBA color cell|Los Angeles Lakers}}" width="5%"| Date
+! style="{{NBA color cell|Los Angeles Lakers}}" width="10%"| Player
+! style="{{NBA color cell|Los Angeles Lakers}}" width="10%"| Reason 
+! style="{{NBA color cell|Los Angeles Lakers}}" width="10%"| New team
+! style="{{NBA color cell|Los Angeles Lakers}}" width="1%" class="unsortable" | Ref.
+|-
+|November 21
+|[[Dwight Howard]]
+|1 year $2.6 million deal
+|[[Philadelphia 76ers]]
+|<ref>{{Cite web|title=76ers sign Dwight Howard|url=https://www.nba.com/sixers/news/team-signs-howard|website=NBA.com|date=November 21, 2020|access-date=November 21, 2020}}</ref>
+|-
+|November 23
+|[[Avery Bradley]]
+|2 year $11.6 million deal
+|[[Miami Heat]]
+|<ref>{{Cite web|title=Avery Bradley signs with the Heat|url=https://www.nba.com/heat/news/avery-bradley-signs-with-heat-11-23-20|website=NBA.com|date=November 23, 2020|access-date=November 23, 2020}}</ref>
+|-
+|November 23
+|[[Rajon Rondo]]
+|2 year $15 million deal
+|[[Atlanta Hawks]]
+|<ref>{{Cite web|title=Atlanta Hawks sign free agent Rajon Rondo|url=https://www.nba.com/hawks/news/atlanta-hawks-sign-free-agent-guard-rajon-rondo|website=NBA.com|date=November 23, 2020|access-date=November 23, 2020}}</ref>
+|-
+|February 22
+|[[Quinn Cook]]
+|[[Waived]]
+|[[Cleveland Cavaliers]]
+|
+|}
+
+==References==

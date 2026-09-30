@@ -1,0 +1,204 @@
+==Transactions==
+{{Main|List of 2019–20 NBA season transactions}}
+
+===Trades===
+{| class="wikitable sortable sortable" style="text-align: center"
+|-
+|rowspan="3"| July 6
+| align="left" valign="top" |To [[Memphis Grizzlies]]<hr>
+*[[Grayson Allen]]
+*[[Jae Crowder]]
+*[[Kyle Korver]]
+*Draft rights to [[Darius Bazley]] (#23)
+*2020 UTA protected first-round pick
+| align="left" valign="top" |To [[Utah Jazz]]<hr>
+*[[Mike Conley Jr.]]
+| align="center" |<ref>{{cite web|title=Grizzlies trade Mike Conley to Jazz|url=https://www.nba.com/grizzlies/news/memphis-grizzlies-utah-jazz-trade-190706|website=NBA.com|access-date=July 6, 2019|date=July 6, 2019}}</ref><ref>{{cite web|title=Utah Jazz Acquire Guard Mike Conley Jr.|url=https://www.nba.com/jazz/utah-jazz-acquire-guard-mike-conley-jr|website=NBA.com|access-date=July 6, 2019|date=July 6, 2019}}</ref>
+|-
+| align="left" valign="top" |To [[Memphis Grizzlies]]<hr>
+*[[Dwight Howard]]
+| align="left" valign="top" |To [[Washington Wizards]]<hr>
+*[[C. J. Miles]]
+| align="center" |<ref>{{cite web|title=Wizards acquire C. J. Miles from Memphis|url=https://www.nba.com/wizards/wizards-acquire-cj-miles-grizzlies-dwight-howard-trade|website=NBA.com|access-date=July 6, 2019|date=July 6, 2019}}</ref> 
+|-
+| align="left" valign="top" |To [[Memphis Grizzlies]]<hr>
+*Draft rights to [[Brandon Clarke]] (#21)
+| align="left" valign="top" |To [[Oklahoma City Thunder]]<hr>
+*Draft rights to [[Darius Bazley]] (#23)
+*2024 MEM second-round pick
+| align="center" |<ref>{{cite web|title=Thunder Acquires Draft Rights to Darius Bazley|url=https://www.nba.com/thunder/news/release-bazley-190706|website=NBA.com|access-date=July 6, 2019|date=July 6, 2019}}</ref>
+|-
+| rowspan="3" | July 7
+| align="left" valign="top" |To [[Memphis Grizzlies]]<hr>
+*[[Josh Jackson (basketball)|Josh Jackson]]
+*[[De'Anthony Melton]]
+*2020 PHX second-round pick
+*2021 PHX protected second-round pick
+| align="left" valign="top" |To [[Phoenix Suns]]<hr>
+*[[Jevon Carter]]
+*[[Kyle Korver]]
+| align="center" |<ref>{{cite web|title=Suns Complete Trade with Memphis|url=https://www.nba.com/suns/press-release/suns-complete-trade-memphis|website=NBA.com|access-date=July 7, 2019|date=July 7, 2019}}</ref>
+|-
+| align="left" valign="top" |To [[Memphis Grizzlies]]<hr>
+*[[Andre Iguodala]]
+*2024 GSW protected first-round pick
+| align="left" valign="top" |To [[Golden State Warriors]]<hr>
+*[[Julian Washburn]]
+| align="center" |<ref>{{cite web|title=Grizzlies acquire Andre Iguodala and future first round draft pick from Warriors|url=https://www.nba.com/grizzlies/news/grizzlies-acquire-andre-iguodala-and-future-first-round-draft-pick-from-warriors-190707|website=NBA.com|access-date=July 7, 2019|date=July 7, 2019}}</ref>
+|-
+| align="left" valign="top" |To [[Memphis Grizzlies]]<hr>
+*[[Solomon Hill (basketball)|Solomon Hill]]
+*[[Miles Plumlee]]
+| align="left" valign="top" |To [[Atlanta Hawks]]<hr>
+*[[Chandler Parsons]]
+| align="center" |<ref>{{cite web|title=Atlanta Hawks Acquire Chandler Parsons From Memphis Grizzlies|url=https://www.nba.com/hawks/news/hawks-acquire-chandler-parsons-memphis-grizzlies|website=NBA.com|access-date=July 7, 2019|date=July 7, 2019}}</ref>
+|-
+| July 8
+| align="left" valign="top" |To [[Memphis Grizzlies]]<hr>
+*Draft rights to [[Satnam Singh]] (2015 #52)
+*2021 POR second-round pick
+*2023 second-round pick
+| align="left" valign="top" |To [[Dallas Mavericks]]<hr>
+*[[Delon Wright]] ([[sign and trade]])
+| align="center" |<ref name="Delon-Wright">{{cite web|last1=Sefko|first1=Eddie|title=Mavericks make it official, acquiring veteran guard Delon Wright|url=https://www.mavs.com/mavericks-make-it-official-acquiring-veteran-guard-delon-wright/|website=Mavs.com|access-date=July 9, 2019|date=July 8, 2019}}</ref>
+|-
+| rowspan="3" | February 6
+| colspan="2" |'''Three-team trade'''
+| rowspan="3" |<ref>{{Cite web|url=https://www.nba.com/grizzlies/news/memphis-grizzlies-acquire-justise-winslow-gorgui-dieng-and-dion-waiters-in-three-team-trade-with-miami-heat-and-minnesota-timberwolves-200206|title=Memphis Grizzlies acquire Justise Winslow, Gorgui Dieng and Dion Waiters in three-team trade with Miami Heat and Minnesota Timberwolves|website=NBA.com|date=February 6, 2020|access-date=February 7, 2020}}</ref>
+|-
+| align="left" valign="top" |To [[Miami Heat]]<hr>
+*[[Andre Iguodala]] (from Memphis)
+*[[Jae Crowder]] (from Memphis)
+*[[Solomon Hill (basketball)|Solomon Hill]] (from Memphis)
+| align="left" valign="top" |To [[Memphis Grizzlies]]<hr>
+*[[Justise Winslow]] (from Miami) 
+*[[Dion Waiters]] (from Miami)
+*[[Gorgui Dieng]] (from Minnesota)
+|-
+| colspan="2" align="left" valign="top" |To [[Minnesota Timberwolves]]<hr>
+*[[James Johnson (basketball, born 1987)|James Johnson]] (from Miami)
+|-
+|}
+
+===Free agency===
+
+====Re-signed====
+{| class="wikitable sortable sortable" style="text-align: center"
+! style="{{NBA color cell|Memphis Grizzlies}}" width="10%"| Player
+! style="{{NBA color cell|Memphis Grizzlies}}" width="10%" | Signed
+|-
+| [[Jonas Valančiūnas]]<ref>{{cite web |title=Grizzlies re-sign Jonas Valanciunas to multi-year contract |url=https://www.nba.com/grizzlies/news/grizzlies-re-sign-jonas-valanciunas-to-multi-year-contract-190711|website=NBA.com|access-date=July 22, 2019}}</ref>
+| July 11
+|-
+| [[Dusty Hannahs]]<ref name="HannahsMooney">{{cite web|url=https://www.nba.com/grizzlies/news/memphis-grizzlies-sign-dusty-hannahs-191014|title=Memphis Grizzlies sign Dusty Hannahs|website=NBA.com|date=October 14, 2019}}</ref>
+| October 14
+|-
+|}
+
+====Additions====
+{| class="wikitable sortable sortable" style="text-align: center"
+! style="{{NBA color cell|Memphis Grizzlies}}" width="10%"| Player
+! style="{{NBA color cell|Memphis Grizzlies}}" width="10%" | Signed
+! style="{{NBA color cell|Memphis Grizzlies}}" width="10%"| Former team
+|-
+| [[John Konchar]]<ref>{{cite web|title=Memphis Grizzlies sign John Konchar to two-way contract|url=https://www.nba.com/grizzlies/news/memphis-grizzlies-sign-john-konchar-to-two-way-contract-190708|website=NBA.com|date=July 8, 2019|access-date=October 13, 2019}}</ref>
+| July 8
+| [[Purdue Fort Wayne Mastodons men's basketball|Purdue Fort Wayne Mastodons]]
+|-
+| [[Tyus Jones]]<ref>{{cite web|title=Memphis Grizzlies sign Tyus Jones to multi-year contract|url=https://www.nba.com/grizzlies/news/memphis-grizzlies-sign-tyus-jones-to-multi-year-contract-190711|website=NBA.com|date=July 11, 2019|access-date=July 22, 2019}}</ref>
+| July 11
+| [[Minnesota Timberwolves]]
+|-
+| [[Marko Gudurić]]<ref>{{cite web|title=Memphis Grizzlies sign Marko Gudurić to multi-year contract|url=https://www.nba.com/grizzlies/news/memphis-grizzlies-sign-marko-guduri-to-multi-year-contract-190731|website=NBA.com|date=July 31, 2019|access-date=October 13, 2019}}</ref>
+| July 31
+| {{flagicon|TUR}} [[Fenerbahçe Basketball|Fenerbahçe Beko]]
+|-
+| [[Matt Mooney]]<ref>{{cite web|title=Memphis Grizzlies sign Matt Mooney|url=https://www.nba.com/grizzlies/news/memphis-grizzlies-sign-matt-mooney-190904|website=NBA.com|date=September 4, 2019|access-date=October 13, 2019}}</ref>
+| September 4
+| [[Texas Tech Red Raiders basketball|Texas Tech Red Raiders]]
+|-
+| [[Ahmad Caver]]<ref name="CaverHannahs">{{cite web|title=Memphis Grizzlies sign Ahmad Caver|url=https://www.nba.com/grizzlies/news/memphis-grizzlies-sign-ahmad-caver-191015|website=NBA.com|date=October 15, 2019|access-date=October 15, 2019}}</ref>
+| October 15
+| [[Old Dominion Monarchs basketball|Old Dominion Monarchs]]
+|-
+| [[Jarrod Uthoff]]<ref name="UthoffCaver">{{cite web|title=Memphis Grizzlies sign Jarrod Uthoff|url=https://www.nba.com/grizzlies/news/memphis-grizzlies-sign-jarrod-uthoff-191016|website=NBA.com|date=October 16, 2019|access-date=October 16, 2019}}</ref>
+| October 16
+| {{flagicon|RUS}} [[BC Zenit Saint Petersburg|Zenit Saint Petersburg]]
+|-
+| [[Shaq Buchanan]]<ref name="BuchananUthoff">{{cite web|title=Memphis Grizzlies sign Shaq Buchanan|url=https://www.nba.com/grizzlies/news/memphis-grizzlies-sign-shaq-buchanan-191017|website=NBA.com|date=October 17, 2019|access-date=October 17, 2019}}</ref>
+| October 17
+| [[Murray State Racers men's basketball|Murray State Racers]]
+|-
+| [[Bennie Boatwright]]<ref name="BoatwrightBuchanan">{{cite web|title=Memphis Grizzlies sign Bennie Boatwright|url=https://www.nba.com/grizzlies/news/memphis-grizzlies-sign-bennie-boatwright-191018|website=NBA.com|date=October 18, 2019|access-date=October 18, 2019}}</ref>
+| October 18
+| [[USC Trojans men's basketball|USC Trojans]]
+|}
+
+====Subtractions====
+{| class="wikitable sortable sortable" style="text-align: center"
+! style="{{NBA color cell|Memphis Grizzlies}}" width="10%"| Player
+! style="{{NBA color cell|Memphis Grizzlies}}" width="10%" | Reason left
+! style="{{NBA color cell|Memphis Grizzlies}}" width="10%"| New team
+|-
+| [[Jordan Bell]]<ref>{{cite web|title=GO-GO ADD JORDAN BELL|url=https://capitalcity.gleague.nba.com/news/go-go-add-jordan-bell/|date=March 11, 2020|website=gleague.NBA.com|access-date=July 9, 2020|archive-date=March 12, 2022|archive-url=https://web.archive.org/web/20220312174209/https://capitalcity.gleague.nba.com/news/go-go-add-jordan-bell/|url-status=dead}}</ref>
+| Waived
+| [[Capital City Go-Go]]
+|-
+| [[Avery Bradley]]<ref>{{cite web |title=Lakers Sign Avery Bradley|url=https://www.nba.com/lakers/releases/190708-lakers-sign-avery-bradley|date=July 22, 2019|website=NBA.com|access-date=July 22, 2019}}</ref>
+| Waived
+| [[Los Angeles Lakers]]
+|-
+| [[Bennie Boatwright]]<ref name="BoatwrightPlumleeRabb">{{cite web|title=Memphis Grizzlies waive three players|url=https://www.nba.com/grizzlies/news/memphis-grizzlies-waive-three-players-191019|date=October 19, 2019|website=NBA.com|access-date=October 20, 2019}}</ref>
+| Waived
+| [[Memphis Hustle]]
+|-
+| [[Shaq Buchanan]]<ref name="BoatwrightBuchanan" />
+| Waived
+| [[Memphis Hustle]]
+|-
+| [[Ahmad Caver]]<ref name="UthoffCaver" />
+| Waived
+| [[Memphis Hustle]]
+|-
+| [[Tyler Dorsey]]<ref>{{cite web|title=מכבי החתימה את טיילר דורסי|url=http://maccabi.co.il/news.asp?id=7215|date=August 17, 2019|website=Maccabi.co.il|access-date=October 13, 2019|language=he}}</ref>
+| UFA
+| {{flagicon|ISR}} [[Maccabi FOX Tel Aviv]]
+|-
+| [[Dusty Hannahs]]<ref name="CaverHannahs" />
+| Waived
+| [[Memphis Hustle]]
+|-
+| [[Dwight Howard]]<ref>{{cite web|title=Lakers Sign Dwight Howard|url=https://www.nba.com/lakers/releases/190826-lakers-sign-dwight-howard|date=August 26, 2019|website=NBA.com|access-date=August 27, 2019}}</ref>
+| Waived
+| [[Los Angeles Lakers]]
+|-
+| [[Justin Holiday]]<ref>{{cite web|title=Pacers Sign Justin Holiday; Sign Naz Mitrou-Long to a Two-Way Contract|url=https://www.nba.com/pacers/news/pacers-sign-justin-holiday-sign-naz-mitrou-long-two-way-contract|date=July 31, 2019|website=NBA.com|access-date=October 13, 2019}}</ref>
+| UFA
+| [[Indiana Pacers]]
+|-
+| [[Matt Mooney]]<ref name="HannahsMooney" />
+| Waived
+| [[Memphis Hustle]]
+|-
+| [[Joakim Noah]]
+| UFA
+|[[Los Angeles Clippers]]
+|-
+| [[Miles Plumlee]]<ref name="BoatwrightPlumleeRabb" />
+| Waived
+| {{flagicon|CHN}} [[Zhejiang Lions]]
+|-
+| [[Ivan Rabb]]<ref name="BoatwrightPlumleeRabb" />
+| Waived
+| [[New York Knicks]]
+|-
+| [[Jarrod Uthoff]]<ref name="BuchananUthoff" />
+| Waived
+| [[Memphis Hustle]]
+|-
+| [[Tyler Zeller]]<ref>{{cite web|first=Alex|last=Labidou|title=Denver Nuggets announce 2019 training camp roster|url=https://www.nba.com/nuggets/news/denver-nuggets-announce-2019-training-camp-roster-20190928|date=September 28, 2019|website=NBA.com|access-date=October 13, 2019}}</ref>
+| UFA
+| [[Denver Nuggets]]
+|}
+
+==References==

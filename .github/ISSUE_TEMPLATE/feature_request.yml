@@ -1,0 +1,10 @@
+name: Feature or modeling idea
+description: Suggest an improvement or a model change
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like, and why?
+      description: For model changes, say which backtest metric you expect to move.
+    validations: {required: true}

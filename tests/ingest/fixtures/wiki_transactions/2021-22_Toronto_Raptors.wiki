@@ -1,0 +1,165 @@
+== Transactions ==
+{{Main|List of 2021–22 NBA season transactions}}
+
+=== Overview ===
+{| border=1 style="border-collapse:collapse; background-color:#eeeeee" bordercolor="#DFDFDF" cellpadding="5"
+| valign="top"|'''Players Added''' <hr>
+'''Via draft'''
+*[[Scottie Barnes]]
+*[[Dalano Banton]]
+*[[David Johnson (basketball)|David Johnson]]
+'''Via trade'''
+*[[Goran Dragić]]
+*[[Precious Achiuwa]]
+'''Via free agency'''
+*[[Sam Dekker]]
+*[[Ish Wainright]]
+*[[Justin Champagnie]]
+*[[Isaac Bonga]]
+*[[Svi Mykhailiuk]]
+| valign="top"|'''Players Lost''' <hr>
+'''Via trade'''
+*[[Kyle Lowry]]
+*
+<!--'''Via free agency'''
+*
+'''Via retirement'''-->
+*
+'''Waived'''
+* [[Paul Watson (basketball)|Paul Watson]]
+* [[Rodney Hood]]
+* [[DeAndre' Bembry]]
+* [[Aron Baynes]]
+|}
+
+=== Trades ===
+{| class="wikitable sortable sortable" style="text-align: center"
+|- style="background:#eee;"
+|align="left" valign="top" |To [[Miami Heat]]<hr/>
+*[[Kyle Lowry]] <small>([[Sign-and-trade deal|sign-and-trade]])</small>
+|align="left" valign="top" |To [[Toronto Raptors]]<hr/>
+*[[Precious Achiuwa]]
+*[[Goran Dragić]]
+| <ref name="LowryDragicAchiuwa">{{cite web|title=HEAT ACQUIRE KYLE LOWRY|url=https://www.nba.com/heat/news/heat-acquire-kyle-lowry|website=NBA.com|date=August 6, 2021|access-date=August 6, 2021|archive-date=October 24, 2021|archive-url=https://web.archive.org/web/20211024112535/https://www.nba.com/heat/news/heat-acquire-kyle-lowry|url-status=live}}</ref>
+|-
+
+| align=left valign=top | To [[San Antonio Spurs]]<hr/>
+*[[Goran Dragić]]
+*2022 protected first-round pick{{refn|group="lower-alpha"|San Antonio will receive in 2022 if it is No. 15–30, in 2023 if it is No. 14–30; if the pick is not conveyed by 2023, it will convert to Toronto's second-round picks in 2023 and 2026.}}
+| align=left valign=top | To [[Toronto Raptors]]<hr/>
+*[[Drew Eubanks]]
+*[[Thaddeus Young]]
+*2022 second-round pick{{refn|group="lower-alpha"|The better of the picks originally belonging to Chicago and Detroit.}}
+|<ref>{{#invoke:Cite|web|title=SPURS ACQUIRE GORAN DRAGIĆ & 2022 FIRST ROUND PICK|url=https://www.nba.com/spurs/spurs-acquire-goran-dragic-2022-first-round-pick|last=Mauricio|first=Ezekiel|website=NBA.com|date=February 10, 2022|access-date=February 10, 2022}}</ref><ref>{{#invoke:Cite|web|title=Raptors trade Goran Dragic to Spurs in exchange for Thaddeus Young|url=https://www.nba.com/news/raptors-spurs-trade-dragic-young-eubanks|website=NBA.com|date=February 10, 2022|access-date=July 27, 2023}}</ref>
+|-
+|}
+
+=== Free agency ===
+
+==== Re-signed ====
+{| class="wikitable sortable sortable" style="text-align: center"
+! width="5%" style="{{NBA color cell|Toronto Raptors}}" |Date
+! width="10%" style="{{NBA color cell|Toronto Raptors}}" |Player
+! width="10%" style="{{NBA color cell|Toronto Raptors}}" |Contract terms
+! class="unsortable" width="1%" style="{{NBA color cell|Toronto Raptors}}" |Ref.
+|-
+| August 6
+| [[Khem Birch]]
+| 3 year $20 million
+| <ref>{{cite web|title=Raptors officially sign Birch to three-year deal|url=https://www.tsn.ca/toronto-raptors-khem-birch-contract-1.1678714|website=TSN.com|date=August 6, 2021|access-date=August 9, 2021|archive-date=August 7, 2021|archive-url=https://web.archive.org/web/20210807232208/https://www.tsn.ca/toronto-raptors-khem-birch-contract-1.1678714|url-status=live}}</ref>
+|-
+| August 8
+| [[Gary Trent Jr.]]
+| 3 year $54 million
+| <ref>{{cite tweet|author=Toronto Raptors|number=1424371068681162757|title=YESSIR! Welcome back, @gtrentjr Love-you gesture #WeTheNorth|user=Raptors|date=August 8, 2021|access-date=August 9, 2021}}</ref>
+|}
+
+==== Additions ====
+{| class="wikitable sortable sortable" style="text-align: center"
+! width="5%" style="{{NBA color cell|Toronto Raptors}}" |Date
+! width="10%" style="{{NBA color cell|Toronto Raptors}}" |Player
+! width="10%" style="{{NBA color cell|Toronto Raptors}}" |Contract terms
+! width="10%" style="{{NBA color cell|Toronto Raptors}}" |Former team
+! class="unsortable" width="1%" style="{{NBA color cell|Toronto Raptors}}" |Ref.
+|-
+|rowspan="2"|August 7
+| [[Ish Wainright]]
+| 2 year minimum
+| [[SIG Strasbourg]]
+| rowspan="2"|<ref name="ChampagnieWainright">{{cite web|first=Soheil|last=Jamshidi|title=Raptors Sign Wainright & Champagnie|url=https://www.nba.com/raptors/raptors-sign-wainright-champagnie|website=NBA.com|date=August 7, 2021|access-date=August 8, 2021|archive-date=August 8, 2021|archive-url=https://web.archive.org/web/20210808185451/https://www.nba.com/raptors/raptors-sign-wainright-champagnie|url-status=live}}</ref>
+|-
+| [[Justin Champagnie]]
+| [[Two-way contract]]
+| [[Pittsburgh Panthers men's basketball|Pittsburgh]]
+|-
+| August 9
+| [[Sam Dekker]]
+|rowspan="2"| 1 year minimum
+| [[Türk Telekom B.K.]]
+|<ref>{{cite web |title=Sam Dekker gets his new number with the Toronto Raptors |url=https://badgerswire.usatoday.com/2021/08/09/look-sam-dekker-gets-his-new-number-with-the-toronto-raptor |website=Badgerswire.usatoday.com |access-date=August 10, 2021 |date=August 9, 2021}}</ref>
+|-
+| August 11
+| [[Isaac Bonga]]
+| [[Washington Wizards]]
+|<ref>{{cite tweet|author=Toronto Raptors|number=1425667955459776513|title=Official ✍🏽 Welcome to the squad, @isaacbonga! #WeTheNorth|user=Raptors|date=August 11, 2021|access-date=September 3, 2021}}</ref>
+|-
+| August 31
+| [[Svi Mykhailiuk]]
+| 2 year minimum
+| [[Oklahoma City Thunder]]
+| <ref>{{cite web|first=Arthur|last=Hill|title=Sviatoslav Mykhailiuk Signs With Raptors|url=https://www.hoopsrumors.com/2021/09/sviatoslav-mykhailiuk-to-sign-with-raptors.html|website=HoopsRumors.com|date=September 1, 2021|access-date=September 3, 2021|archive-date=September 2, 2021|archive-url=https://web.archive.org/web/20210902211400/https://www.hoopsrumors.com/2021/09/sviatoslav-mykhailiuk-to-sign-with-raptors.html|url-status=live}}</ref>
+|-
+| rowspan="5"|TBA
+| [[Juwan Morgan]]
+| rowspan="5"|10-day contract
+| [[Maine Celtics]] ([[G League]])
+| rowspan="2"|<ref>{{cite web|title=Report: Raptors to add Brandon Goodwin, Juwan Morgan using hardship exemption|url=https://www.sportsnet.ca/nba/article/report-raptors-add-brandon-goodwin-juwan-morgan-using-hardship-exemption/|website=Sportsnet.ca|date=December 20, 2021|access-date=December 22, 2021|archive-date=December 20, 2021|archive-url=https://web.archive.org/web/20211220201404/https://www.sportsnet.ca/nba/article/report-raptors-add-brandon-goodwin-juwan-morgan-using-hardship-exemption/|url-status=live}}</ref>
+|-
+| [[Brandon Goodwin (basketball)|Brandon Goodwin]]
+| [[Westchester Knicks]] ([[G League]])
+|-
+| [[Nik Stauskas]]
+| [[Grand Rapids Gold]] ([[G League]])
+| <ref>{{cite web|title=Report: Raptors sign Canadian Nik Stauskas from G League|url=https://www.sportsnet.ca/nba/article/report-raptors-sign-canadian-nik-stauskas-g-league/|website=Sportsnet.ca|date=December 20, 2021|access-date=December 22, 2021|archive-date=December 22, 2021|archive-url=https://web.archive.org/web/20211222191627/https://www.sportsnet.ca/nba/article/report-raptors-sign-canadian-nik-stauskas-g-league/|url-status=live}}</ref>
+|-
+| [[Tremont Waters]]
+| [[Wisconsin Herd]] ([[G League]])
+| <ref>{{cite web|title=With VanVleet and Flynn in protocols, Raptors plan to sign Waters|url=https://www.sportsnet.ca/nba/article/report-raptors-vanvleet-flynn-enter-health-safety-protocols/|website=Sportsnet.ca|date=December 21, 2021|access-date=December 22, 2021|archive-date=December 21, 2021|archive-url=https://web.archive.org/web/20211221194741/https://www.sportsnet.ca/nba/article/report-raptors-vanvleet-flynn-enter-health-safety-protocols/|url-status=live}}</ref>
+|-
+| [[D. J. Wilson]]
+| [[Oklahoma City Blue]] ([[G League]])
+| <ref>{{cite web|title=Report: Raptors Add D.J. Wilson As COVID Replacement Player|url=https://www.si.com/nba/raptors/.amp/news/toronto-rators-dj-wilson-covid-replacement-players|website=Sportsnet.ca|date=December 21, 2021|access-date=December 22, 2021|archive-date=December 4, 2022|archive-url=https://web.archive.org/web/20221204191050/https://www.si.com/nba/raptors/.amp/news/toronto-rators-dj-wilson-covid-replacement-players|url-status=live}}</ref>
+|}
+
+==== Subtractions ====
+{| class="wikitable sortable sortable" style="text-align: center"
+! style="{{NBA color cell|Toronto Raptors}}" width="5%"| Date
+! style="{{NBA color cell|Toronto Raptors}}" width="10%"| Player
+! style="{{NBA color cell|Toronto Raptors}}" width="10%"| Reason 
+! style="{{NBA color cell|Toronto Raptors}}" width="10%"| New team
+! style="{{NBA color cell|Toronto Raptors}}" width="1%" class="unsortable" | Ref.
+|-
+| rowspan="3"|August 3
+| [[Paul Watson (basketball)|Paul Watson]]
+| rowspan="5"| Waived
+|[[Oklahoma City Thunder]]
+| rowspan="3"|<ref name="BembryHoodWatson">{{cite web|first=Scott|last=Rafferty|title=Toronto Raptors waive DeAndre' Bembry, Rodney Hood and Paul Watson|url=https://ca.nba.com/news/toronto-raptors-waive-deandre-bembry-rodney-hood-and-paul-watson/1pbb39v7cfky91pcqskber8ug0|website=NBA.com|date=August 3, 2021|access-date=August 9, 2021|archive-date=August 9, 2021|archive-url=https://web.archive.org/web/20210809202055/https://ca.nba.com/news/toronto-raptors-waive-deandre-bembry-rodney-hood-and-paul-watson/1pbb39v7cfky91pcqskber8ug0|url-status=live}}</ref>
+|-
+| [[Rodney Hood]]
+| [[Milwaukee Bucks]]
+|-
+| [[DeAndre' Bembry]]
+| [[Brooklyn Nets]]
+|-
+| August 4
+| [[Aron Baynes]]
+|
+| <ref>{{cite web |title=Toronto Raptors waive center Aron Baynes |url=https://ca.nba.com/news/toronto-raptors-waive-center-aron-baynes/10a27az6857ge1ahmpv63eyi66 |website=NBA.com |access-date=August 9, 2021 |date=August 4, 2021 |archive-date=August 9, 2021 |archive-url=https://web.archive.org/web/20210809191655/https://ca.nba.com/news/toronto-raptors-waive-center-aron-baynes/10a27az6857ge1ahmpv63eyi66 |url-status=live }}</ref>
+|-
+| November 6
+| [[Sam Dekker]]
+| [[Bahçeşehir Koleji S.K.|Bahçeşehir Koleji (Turkey)]]
+| <ref>{{cite web|first=Rory|last=Maher|title=Raptors Waive Sam Dekker|url=https://www.hoopsrumors.com/2021/11/raptors-waiving-sam-dekker.html|website=HoopsRumors.com|date=November 6, 2021|access-date=November 6, 2021|archive-date=November 6, 2021|archive-url=https://web.archive.org/web/20211106030155/https://www.hoopsrumors.com/2021/11/raptors-waiving-sam-dekker.html|url-status=live}}</ref>
+|}
+
+== Notes ==

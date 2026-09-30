@@ -1,0 +1,66 @@
+[project]
+name = "nba-fantasy-scouter"
+version = "0.1.0"
+description = "Projection engine and backtest for an ESPN H2H points NBA fantasy league"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "pyyaml",
+    "pandas",
+    "duckdb",
+    "nba_api",
+    "scikit-learn",
+    "lightgbm",
+    "python-dotenv",
+    "pyarrow",
+    "matplotlib",
+    "streamlit",
+    "beautifulsoup4",
+    "lxml",
+    "espn-api",
+    "openpyxl",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+namespaces = true
+
+[project.scripts]
+nba-fantasy = "src.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+# Network tests are opt-in: `./dev test -m network`. A -m given on the command line REPLACES the default
+# below, so "-m 'not slow'" would also run network tests; use "-m 'not slow and not network'".
+addopts = "-ra -m 'not network'"
+markers = [
+    "slow: takes more than a few seconds (deselect with -m 'not slow and not network')",
+    "network: talks to a live external service (stats.nba.com, ESPN, ...); excluded by default",
+    "real_data: needs real ingested data under NBA_DATA_DIR; must skip cleanly when it is absent",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+extend-exclude = ["notebooks", "data"]
+
+[tool.ruff.lint]
+# E/W = pycodestyle, F = pyflakes, B = bugbear. Import sorting (I) and pyupgrade (UP) are
+# deliberately not enabled yet: existing modules use `typing.Mapping` and an unsorted import
+# block, and a lint change must not force edits in other tracks' files.
+select = ["E", "F", "W", "B"]
+ignore = [
+    "E501",  # line length is a formatter concern (`line-length` above); long strings/tables are fine
+    "B905",  # zip() without strict=: lengths are validated by the data contract, not by zip
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/**/__init__.py" = ["F401"]   # re-exports
+"tests/**" = ["B011"]             # `assert False` is a legitimate "must not get here" in tests

@@ -1,0 +1,183 @@
+==Transactions==
+{{Main article|List of 2023-24 NBA season transactions}}
+
+===Trades===
+{| border="1" style="border-collapse:collapse; text-align:center; width:100%;"  cellpadding="5"
+|- style="background:#eee;"
+| style="width:12%" | June 23, 2023<ref>{{Cite web|title=Charlotte Hornets Add Four Players In 2023 NBA Draft|url=https://www.nba.com/hornets/news/charlotte-hornets-add-four-players-in-2023-nba-draft|website=NBA.com|date=June 23, 2023|access-date=September 30, 2023}}</ref>
+| style="width:30%" valign="top" | To '''Charlotte Hornets'''<hr>Draft rights to [[James Nnaji]] (No. 31)
+| style="width:30%" valign="top" | To '''[[Boston Celtics]]'''<hr>Draft rights to [[Colby Jones]] (No. 34)
+Draft rights to [[Mouhamed Gueye]] (No. 39)
+|- 
+| style="width:12%" | January 23, 2024<ref>{{Cite web|title=Hornets Acquire First-Round Pick & Kyle Lowry From Miami Heat|url=https://www.nba.com/hornets/news/hornets-acquire-first-round-pick-kyle-lowry-from-miami-heat|website=NBA.com|date=January 23, 2024|access-date=January 23, 2024}}</ref>
+| style="width:30%" valign="top" | To '''Charlotte Hornets'''<hr>[[Kyle Lowry]]<br>2027 first-round pick
+| style="width:30%" valign="top" | To '''[[Miami Heat]]'''<hr>[[Terry Rozier]]
+|- style="background:#eee;"
+| style="width:12%" | February 8, 2024<ref>{{Cite web|title=Hornets Acquire Seth Curry, Grant Williams And A 2027 First-Round Pick From Dallas|url=https://www.nba.com/hornets/news/hornets-acquire-seth-curry-grant-williams-and-a-2027-first-round-pick-from-dallas|website=NBA.com|date=February 8, 2024|access-date=February 8, 2024}}</ref>
+| style="width:30%" valign="top" | To '''Charlotte Hornets'''<hr>[[Seth Curry]]<br>[[Grant Williams (basketball)|Grant Williams]]<br>2027 first-round pick
+| style="width:30%" valign="top" | To '''[[Dallas Mavericks]]'''<hr>[[P. J. Washington]]<br>2024 second-round pick<br>2028 second-round pick
+|- 
+| style="width:12%" | February 8, 2024<ref>{{Cite web|title=Hornets Acquire Davis Bertans, Tre Mann, Vasilije Micic And Two Second-Round Picks From Oklahoma City|url=https://www.nba.com/hornets/news/hornets-acquire-davis-bertans-tre-mann-vasilije-micic-and-two-second-round-picks-from-oklahoma-city|website=NBA.com|date=February 8, 2024|access-date=February 8, 2024}}</ref>
+| style="width:30%" valign="top" | To '''Charlotte Hornets'''<hr>[[Dāvis Bertāns]]<br>[[Tre Mann]]<br>[[Vasilije Micić]]<br>2024 second-round pick<br>2025 second-round pick
+| style="width:30%" valign="top" | To '''[[Oklahoma City Thunder]]'''<hr>[[Gordon Hayward]]
+|}
+
+=== Free agency ===
+
+==== Re-signed ====
+{| class="wikitable sortable sortable" style="text-align: center"
+! style="{{NBA color cell|Charlotte Hornets}}" width="5%" |Date
+! style="{{NBA color cell|Charlotte Hornets}}" width="10%" |Player
+! style="{{NBA color cell|Charlotte Hornets}}" width="1%" class=unsortable" | Ref.
+|-
+| July 7
+| [[Miles Bridges]]
+| <ref>{{cite web|url=https://www.nba.com/hornets/news/miles-bridges-signs-hornets-qualifying-offer|title=Miles Bridges Signs Hornets Qualifying Offer|website=NBA.com|date=July 7, 2023|access-date=November 4, 2023}}</ref>
+|-
+| August 29
+| [[P. J. Washington]]
+| <ref>{{cite web|title=Hornets Re-Sign P.J. Washington Jr.|url=https://www.nba.com/hornets/news/hornets-re-sign-p-j-washington-jr|website=NBA.com|date=August 29, 2023|access-date=August 30, 2023}}</ref>
+|-
+| September 29
+| [[Théo Maledon]]
+| <ref>{{cite web|title=Charlotte Hornets Re-Sign Théo Maledon|url=https://www.nba.com/hornets/news/charlotte-hornets-re-sign-theo-maledon|website=NBA.com|date=September 29, 2023|access-date=September 30, 2023}}</ref>
+|}
+
+==== Additions ====
+{| class="wikitable sortable sortable" style="text-align: center"
+! style="{{NBA color cell|Charlotte Hornets}}" width="5%" |Date
+! style="{{NBA color cell|Charlotte Hornets}}" width="10%" |Player
+! style="{{NBA color cell|Charlotte Hornets}}" width="10%" |Former team
+! style="{{NBA color cell|Charlotte Hornets}}" width="1%" class="unsortable" | Ref.
+|-
+| July 19
+| [[Leaky Black]]
+| [[North Carolina Tar Heels men's basketball|North Carolina Tar Heels]]
+| <ref>{{cite web|title=Charlotte Hornets Sign Leaky Black To Two-Way Contract|url=https://www.nba.com/hornets/news/charlotte-hornets-sign-leaky-black-to-two-way-contract|website=NBA.com|date=July 19, 2023|access-date=September 30, 2023}}</ref>
+|-
+| August 10
+| [[Frank Ntilikina]]
+| [[Dallas Mavericks]]
+| <ref>{{cite web|title=Hornets Sign Frank Ntilikina|url=https://www.nba.com/hornets/news/hornets-sign-frank-ntilikina|website=NBA.com|date=August 5, 2023|access-date=September 30, 2023}}</ref>
+|-
+| rowspan=4 | September 5
+| [[Angelo Allegri]]
+| [[Eastern Washington Eagles men's basketball|Eastern Washington Eagles]]
+| rowspan=4 | <ref>{{cite web|title=Charlotte Hornets Sign Four Players|url=https://www.nba.com/hornets/news/charlotte-hornets-sign-four-players|website=NBA.com|date=5 September 2023|access-date=8 September 2023}}</ref>
+|-
+| [[Nathan Mensah]]
+| [[San Diego State Aztecs men's basketball|San Diego State Aztecs]]
+|-
+| [[Trevon Scott]]
+| [[Calgary Surge]]
+|-
+| [[Jaylen Sims]]
+| [[Greensboro Swarm]]
+|-
+| rowspan=2 | September 29
+| [[R.J. Hunter]]
+| [[Sydney Kings]]
+| <ref>{{cite web|title=Hornets Sign R.J. Hunter And Edmond Sumner|url=https://www.nba.com/hornets/news/hornets-sign-r-j-hunter-and-edmond-sumner|website=NBA.com|date=September 29, 2023|access-date=September 30, 2023}}</ref>
+|-
+| [[Edmond Sumner]]
+| [[Brooklyn Nets]]
+| <ref>{{cite web|title=Hornets Sign R.J. Hunter And Edmond Sumner|url=https://www.nba.com/hornets/news/hornets-sign-r-j-hunter-and-edmond-sumner|website=NBA.com|date=September 29, 2023|access-date=September 30, 2023}}</ref>
+|-
+| October 24
+| [[Ish Smith]]
+| [[Denver Nuggets]]
+| <ref>{{cite web|title=Charlotte Hornets Sign Ish Smith|url=https://www.nba.com/hornets/news/charlotte-hornets-sign-ish-smith-2|website=NBA.com|date=October 24, 2023|access-date=January 23, 2024}}</ref>
+|}
+
+==== Subtractions ====
+{| class="wikitable sortable sortable" style="text-align: center"
+! style="{{NBA color cell|Charlotte Hornets}}" width="5%" |Date
+! style="{{NBA color cell|Charlotte Hornets}}" width="10%" |Player
+! style="{{NBA color cell|Charlotte Hornets}}" width="10%" |Reason left
+! style="{{NBA color cell|Charlotte Hornets}}" width="10%" |New team
+! style="{{NBA color cell|Charlotte Hornets}}" width="1%" class="unsortable" | Ref.
+|-
+| July 8
+| [[Dennis Smith Jr.]]
+| Free agency
+| [[Brooklyn Nets]]
+| <ref>{{Cite web|url=https://www.nba.com/nets/news/brooklyn-nets-sign-dennis-smith-jr|title=Brooklyn Nets Sign Dennis Smith Jr.|date=July 8, 2023|website=NBA.com|access-date=July 9, 2023}}</ref>
+|-
+| August 3
+| [[Xavier Sneed]]
+| Waived
+| [[New Basket Brindisi|Happy Casa Brindisi]]
+| <ref>{{cite web|title=Charlotte Hornets Waive Xavier Sneed|url=https://www.nba.com/hornets/news/charlotte-hornets-waive-xavier-sneed|website=NBA.com|date=August 3, 2023|access-date=August 4, 2023}}</ref>
+|-
+| August 30
+| [[Kobi Simmons]]
+| Waived
+| [[Raptors 905]]
+| <ref>{{cite web|title=Charlotte Hornets Waive Kobi Simmons|url=https://www.nba.com/hornets/news/charlotte-hornets-waive-kobi-simmons|website=NBA.com|date=August 30, 2023|access-date=January 23, 2024}}</ref>
+|-
+| August 31
+| [[Sviatoslav Mykhailiuk]]
+| Free agency
+| [[Boston Celtics]]
+| <ref>{{cite web|title=Boston Celtics Sign Svi Mykhailiuk|url=https://www.nba.com/celtics/news/083123-press-release-boston-celtics-sign-forward-svi-mykhailiuk|website=NBA.com|date=August 31, 2023|access-date=August 31, 2023}}</ref>
+|-
+| September 26
+| [[Kelly Oubre Jr.]]
+| Free agency
+| [[Philadelphia 76ers]]
+| <ref>{{cite web|title=Kelly Oubre Jr. Signs with 76ers|url=https://www.nba.com/sixers/news/76ers-sign-kelly-oubre-jr|website=NBA.com|date=September 26, 2023|access-date=September 26, 2023}}</ref>
+|-
+| rowspan=3 | September 29
+| [[Angelo Allegri]]
+| rowspan=3 | Waived
+| rowspan=3 | [[Greensboro Swarm]]
+| rowspan=3 | <ref>{{cite web|title=Hornets Waive Angelo Allegri, Tre Scott And Jaylen Sims|url=https://www.nba.com/hornets/news/hornets-waive-angelo-allegri-tre-scott-and-jaylen-sims|website=NBA.com|date=September 29, 2023|access-date=September 29, 2023}}</ref>
+|-
+| [[Trevon Scott]]
+|-
+| [[Jaylen Sims]]
+|-
+|October 11
+| [[Kai Jones]]
+| Waived
+|[[Philadelphia 76ers]]
+|<ref>{{Cite web |title=Charlotte Hornets Waive Kai Jones |url=https://www.nba.com/hornets/news/charlotte-hornets-waive-kai-jones |access-date=2023-10-12 |website=www.nba.com |language=en}}</ref>
+|-
+| October 21
+| [[R.J. Hunter]]
+| Waived
+| [[Greensboro Swarm]]
+| <ref>{{cite web|title=Hornets Waive Brown, Hunter, Mensah|url=https://www.nba.com/hornets/news/hornets-waive-brown-hunter-mensah|website=NBA.com|date=October 21, 2023|access-date=January 23, 2024}}</ref>
+|-
+| October 24
+| [[Edmond Sumner]]
+| Waived
+| [[BC Žalgiris|Žalgiris Kaunas]]
+| <ref>{{cite web|title=Charlotte Hornets Sign Ish Smith|url=https://www.nba.com/hornets/news/charlotte-hornets-sign-ish-smith-2|website=NBA.com|date=October 24, 2023|access-date=January 23, 2024}}</ref>
+|-
+| December 14
+| [[Théo Maledon]]
+| Waived
+| [[Phoenix Suns]]
+| <ref>{{cite web|title=Hornets Waive Theo Maledon|url=https://www.nba.com/hornets/news/hornets-waive-theo-maledon|website=NBA.com|date=December 14, 2023|access-date=January 23, 2024}}</ref>
+|-
+| rowspan=3 | February 8
+| [[James Bouknight]]
+| rowspan=3 | Waived
+|
+| rowspan=3 | <ref>{{cite web|title=Hornets Waive James Bouknight, Frank Ntilikina And Ish Smith|url=https://www.nba.com/hornets/news/hornets-waive-james-bouknight-frank-ntilikina-and-ish-smith|website=NBA.com|date=February 8, 2024|access-date=February 8, 2024}}</ref>
+|-
+| [[Frank Ntilikina]]
+|
+|-
+| [[Ish Smith]]
+|
+|-
+| February 11
+| [[Kyle Lowry]]
+| Waived
+| [[Philadelphia 76ers]]
+| <ref>{{cite web|title=Hornets Waive Kyle Lowry|url=https://www.nba.com/hornets/news/hornets-waive-kyle-lowry|website=NBA.com|date=February 11, 2024|access-date=February 14, 2024}}</ref>
+|}
+
+== References ==

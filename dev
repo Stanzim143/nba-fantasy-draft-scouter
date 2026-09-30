@@ -1,0 +1,309 @@
+#!/usr/bin/env bash
+# Repo dev tooling: worktrees, tests, lint, serialized integration. See CLAUDE.md.
+#
+# Environment (all optional):
+#   NBA_WORKTREE_ROOT  where task worktrees live   (default ~/dev-worktrees/nba-fantasy-2026)
+#   NBA_VENV           shared virtualenv           (default ~/.venvs/nba-fantasy-2026)
+#   DEV_TEST_CMD       shell command used INSTEAD of `python -m pytest -q` by `test`, `ci` and
+#                      `integrate` (extra args are passed as "$@"). Used by the dev-script tests
+#                      so they do not recurse into the real suite.
+#   DEV_RUFF           path to a ruff executable (default: auto-detect venv, PATH, `python -m ruff`);
+#                      the value "none" disables detection (exercises the syntax-check fallback)
+#   DEV_REQUIRE_LINT   1 = `lint` fails when ruff is unavailable instead of falling back
+#   DEV_LOCK_TRIES     integrate: attempts to take the lock (default 360, i.e. 30 min at 5 s)
+#   DEV_LOCK_SLEEP     integrate: seconds between attempts (default 5)
+set -euo pipefail
+
+# Windows-style paths in env vars (C:\Users\x, C:/Users/x) are converted for Git Bash.
+to_posix() {
+  case "$1" in
+    [A-Za-z]:[\\/]*|*\\*)
+      if command -v cygpath >/dev/null 2>&1; then cygpath -u "$1"; else printf '%s\n' "$1"; fi ;;
+    *) printf '%s\n' "$1" ;;
+  esac
+}
+
+WORKTREE_ROOT="$(to_posix "${NBA_WORKTREE_ROOT:-$HOME/dev-worktrees/nba-fantasy-2026}")"
+# Venv: NBA_VENV if set, else ./.venv when `./dev setup` created it, else the shared ~/.venvs one.
+_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -n "${NBA_VENV:-}" ]; then VENV="$(to_posix "$NBA_VENV")"
+elif [ -d "$_root/.venv" ]; then VENV="$_root/.venv"
+else VENV="$(to_posix "$HOME/.venvs/nba-fantasy-2026")"; fi
+
+die() { echo "dev: $*" >&2; exit 1; }
+
+usage() {
+  cat <<'USAGE'
+usage: ./dev <command>
+
+  worktree create <task>   branch task/<task> + worktree from the integration HEAD
+  worktree list            show worktrees
+  worktree remove <task>   remove a fully integrated, clean worktree and its branch
+  test [pytest args]       run the test suite
+  lint                     ruff check (falls back to a syntax check if ruff is unavailable)
+  ci                       test + lint
+  integrate                (from a task worktree) lock, rebase, verify, fast-forward, verify, unlock
+  schedule <action>        Task Scheduler entry: install|status|remove|run-now; --job daily (pre-draft, ADR 0014) or nightly (in-season, ADR 0018); `status` with no --job shows both
+  setup                    create ./.venv and install the dependencies (for a fresh clone; sets nothing global)
+  bootstrap [args]         rebuild the dataset from public sources and build a board (python -m src.ops.bootstrap; --help for flags)
+  app                      launch the draft-board app (works with no data via the sidebar's synthetic demo mode)
+  data <pack|unpack>       PRIVATE handoff only: zip / restore processed data. Never publish the zip (DATA.md)
+  help                     this text
+USAGE
+}
+
+py() {
+  if [ -x "$VENV/Scripts/python.exe" ]; then "$VENV/Scripts/python.exe" "$@"
+  elif [ -x "$VENV/bin/python" ]; then "$VENV/bin/python" "$@"
+  elif command -v python >/dev/null 2>&1; then python "$@"
+  elif command -v python3 >/dev/null 2>&1; then python3 "$@"
+  else die "no python found (looked in $VENV, then PATH)"; fi
+}
+
+require_repo() { git rev-parse --git-dir >/dev/null 2>&1 || die "not inside a git repository (cwd: $PWD)"; }
+
+common_dir() { git rev-parse --path-format=absolute --git-common-dir; }
+# First entry of `git worktree list` is always the primary checkout.
+primary_wt() { git worktree list --porcelain | sed -n '1s/^worktree //p'; }
+integration_branch() {
+  git -C "$(primary_wt)" symbolic-ref -q --short HEAD \
+    || die "the primary checkout has a detached HEAD; check out the integration branch (e.g. main) there first"
+}
+
+cmd_worktree_create() {
+  local task="${1:-}"; [ -n "$task" ] || die "usage: ./dev worktree create <task-name>"
+  [[ "$task" =~ ^[A-Za-z0-9._-]+$ ]] || die "task name may only contain letters, digits, . _ -"
+  [[ "$task" != .* && "$task" != -* ]] || die "task name must not start with '.' or '-'"
+  git check-ref-format "refs/heads/task/$task" || die "'$task' does not make a valid branch name (task/$task)"
+  local base; base="$(integration_branch)"
+  local branch="task/$task" path="$WORKTREE_ROOT/$task"
+  git show-ref --verify --quiet "refs/heads/$branch" && die "branch $branch already exists (another task's? pick a new name)"
+  [ ! -e "$path" ] || die "$path already exists; not reusing it"
+  mkdir -p "$WORKTREE_ROOT"
+  git worktree add -b "$branch" "$path" "$base" >&2
+  echo "Worktree ready: $path (branch $branch from $base @ $(git rev-parse --short "$base"))" >&2
+  echo "cd \"$path\""
+}
+
+cmd_worktree_remove() {
+  local task="${1:-}"; [ -n "$task" ] || die "usage: ./dev worktree remove <task-name>"
+  [[ "$task" =~ ^[A-Za-z0-9._-]+$ ]] || die "task name may only contain letters, digits, . _ -"
+  local branch="task/$task" path="$WORKTREE_ROOT/$task" base; base="$(integration_branch)"
+  [ -d "$path" ] || die "no worktree at $path (if it was deleted by hand, run: git worktree prune)"
+  case "$PWD/" in "$path"/*) die "your shell is inside $path; cd elsewhere (e.g. the primary checkout) first" ;; esac
+  git show-ref --verify --quiet "refs/heads/$branch" || die "branch $branch does not exist; refusing to remove"
+  [ -z "$(git -C "$path" status --porcelain)" ] || die "$path has uncommitted changes; refusing to remove"
+  git merge-base --is-ancestor "$branch" "$base" || die "$branch is not fully integrated into $base; refusing to remove"
+  git worktree remove "$path"
+  git branch -d "$branch"
+}
+
+cmd_test() {
+  if [ -n "${DEV_TEST_CMD:-}" ]; then "$BASH" -c "$DEV_TEST_CMD" dev-test "$@"
+  else py -m pytest -q "$@"; fi
+}
+
+# Locate ruff without installing anything. Sets RUFF_CMD (array); returns 1 if unavailable.
+find_ruff() {
+  RUFF_CMD=()
+  if [ "${DEV_RUFF:-}" = none ]; then return 1; fi
+  if [ -n "${DEV_RUFF:-}" ]; then RUFF_CMD=("$DEV_RUFF"); return 0; fi
+  local c
+  for c in "$VENV/Scripts/ruff.exe" "$VENV/bin/ruff"; do
+    if [ -x "$c" ]; then RUFF_CMD=("$c"); return 0; fi
+  done
+  if command -v ruff >/dev/null 2>&1; then RUFF_CMD=(ruff); return 0; fi
+  if py -c 'import ruff' >/dev/null 2>&1; then RUFF_CMD=(py -m ruff); return 0; fi
+  return 1
+}
+
+cmd_lint() {
+  local top; top="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+  cd "$top"
+  if find_ruff; then
+    echo ">> ${RUFF_CMD[*]} check ."
+    "${RUFF_CMD[@]}" check .
+    return
+  fi
+  [ "${DEV_REQUIRE_LINT:-0}" != "1" ] || die "ruff is required (DEV_REQUIRE_LINT=1) but was not found in $VENV, on PATH, or as a python module"
+  echo "dev: ruff not found (checked $VENV, PATH, python -m ruff); nothing is installed automatically." >&2
+  echo "dev: falling back to a syntax-only check. Install ruff into the venv (pip install ruff) for real linting." >&2
+  git ls-files -z -- '*.py' | py -c '
+import ast, sys
+bad = 0
+files = [f.decode() for f in sys.stdin.buffer.read().split(b"\0") if f]
+for f in files:
+    try:
+        ast.parse(open(f, encoding="utf-8").read(), filename=f)
+    except SyntaxError as e:
+        bad += 1
+        print(f"{f}:{e.lineno}: syntax error: {e.msg}", file=sys.stderr)
+print(f">> syntax check: {len(files)} file(s), {bad} error(s)")
+sys.exit(1 if bad else 0)
+'
+}
+
+cmd_ci() {
+  local rc=0
+  cmd_test || rc=1
+  cmd_lint || rc=1
+  [ "$rc" -eq 0 ] || die "ci failed"
+  echo ">> ci ok"
+}
+
+# --- integration lock -------------------------------------------------------
+# LOCK_HELD is set only after WE created the lock directory, so an aborted wait (or a
+# foreign lock) can never be removed by our EXIT trap. Global on purpose: trap handlers
+# run after function-local variables are gone (this once leaked the lock).
+LOCK_HELD=""
+LOCK_OWNER_TAG=""
+
+# Foreground work (the test runs) is started in the background and waited on, so a signal
+# reaches the traps immediately instead of after the child finishes (bash defers traps while
+# a foreground child runs). CHILD_PID lets the signal handler stop that child before it exits.
+CHILD_PID=""
+
+run_interruptible() {
+  local rc=0
+  "$@" &
+  CHILD_PID=$!
+  wait "$CHILD_PID" || rc=$?
+  CHILD_PID=""
+  return "$rc"
+}
+
+# Stop a process and everything below it (children first), best effort; `ps -ef` columns are UID PID PPID.
+kill_tree() {
+  local c
+  for c in $(ps -ef 2>/dev/null | awk -v p="$1" '$3 == p { print $2 }'); do kill_tree "$c"; done
+  kill "$1" 2>/dev/null || true
+}
+
+stop_child() {
+  if [ -n "$CHILD_PID" ]; then
+    kill_tree "$CHILD_PID"
+    wait "$CHILD_PID" 2>/dev/null || true
+    CHILD_PID=""
+  fi
+}
+
+# Only ever removes a lock whose owner file is OUR tag. The directory is renamed away first
+# (atomic), so an interrupted removal can never leave a half-deleted lock that still blocks
+# everyone; the renamed directory is then deleted (a leftover integration.lock.released.* is
+# harmless garbage, not a lock).
+release_lock() {
+  if [ -n "$LOCK_HELD" ] && [ "$(cat "$LOCK_HELD/owner" 2>/dev/null)" = "$LOCK_OWNER_TAG" ]; then
+    local gone="$LOCK_HELD.released.$$"
+    if mv "$LOCK_HELD" "$gone" 2>/dev/null; then rm -rf "$gone" 2>/dev/null || true; else rm -rf "$LOCK_HELD"; fi
+  fi
+  LOCK_HELD=""
+}
+
+on_signal() {
+  stop_child
+  exit "$1"
+}
+
+describe_lock_owner() {
+  local lock="$1" owner pid
+  owner="$(cat "$lock/owner" 2>/dev/null || echo unknown)"
+  pid="$(printf '%s' "$owner" | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p')"
+  if [ -z "$pid" ]; then echo "$owner (owner pid unknown)"
+  elif kill -0 "$pid" 2>/dev/null; then echo "$owner (pid $pid is running)"
+  else echo "$owner (pid $pid is NOT running: the lock looks stale)"; fi
+}
+
+acquire_lock() {
+  local branch="$1" lock tries=0 max="${DEV_LOCK_TRIES:-360}" nap="${DEV_LOCK_SLEEP:-5}"
+  lock="$(common_dir)/integration.lock"
+  until mkdir "$lock" 2>/dev/null; do
+    tries=$((tries + 1))
+    if [ "$tries" -eq 1 ]; then echo ">> waiting for integration lock held by: $(describe_lock_owner "$lock")" >&2; fi
+    if [ "$tries" -ge "$max" ]; then
+      die "could not get $lock after $tries attempts. Held by: $(describe_lock_owner "$lock"). It is never removed automatically; if you have verified no integrate is running, remove it yourself: rm -rf '$lock'"
+    fi
+    sleep "$nap"
+  done
+  LOCK_OWNER_TAG="$branch pid=$$ $(date -u +%FT%TZ)"
+  LOCK_HELD="$lock"
+  echo "$LOCK_OWNER_TAG" > "$lock/owner"
+}
+
+cmd_test_in() { (cd "$1" && cmd_test); }
+
+cmd_integrate() {
+  local here branch base primary gitdir
+  here="$(git rev-parse --show-toplevel)"
+  primary="$(primary_wt)"
+  base="$(integration_branch)"
+  branch="$(git symbolic-ref -q --short HEAD)" || die "detached HEAD in the task worktree; check out the task branch first"
+  [ "$here" != "$primary" ] || die "run integrate from a task worktree, not the primary checkout"
+  [ "$branch" != "$base" ] || die "current branch is the integration branch"
+  [ -z "$(git status --porcelain)" ] || die "task worktree has uncommitted changes; commit or resolve them first"
+
+  # Every catchable exit path (success, die, set -e, INT, TERM, HUP) runs the EXIT trap and so releases
+  # the lock. SIGKILL / a hard process-tree kill cannot be trapped; that stale lock is reported by the
+  # next integrate (owner, pid, "looks stale") and is never removed automatically.
+  trap release_lock EXIT
+  trap 'on_signal 130' INT
+  trap 'on_signal 143' TERM
+  trap 'on_signal 129' HUP
+  acquire_lock "$branch"
+
+  # Checked while holding the lock so another integrate's in-flight fast-forward is never
+  # mistaken for a dirty checkout.
+  gitdir="$(git -C "$primary" rev-parse --absolute-git-dir)"
+  [ -z "$(git -C "$primary" status --porcelain)" ] || die "integration worktree ($primary) is dirty; report it, do not clean it"
+  [ ! -d "$gitdir/rebase-merge" ] && [ ! -d "$gitdir/rebase-apply" ] || die "integration worktree has a rebase in progress"
+
+  echo ">> integration branch: $base @ $(git rev-parse --short "$base")"
+  echo ">> rebasing $branch onto $base"
+  if ! git rebase "$base"; then
+    git rebase --abort || true
+    die "rebase conflict. Aborted the rebase cleanly. Resolve mechanical conflicts manually (git rebase $base), or report semantic ones."
+  fi
+  echo ">> verifying task branch"
+  run_interruptible cmd_test || die "tests failed on updated task branch; nothing integrated"
+  echo ">> fast-forwarding $base in $primary"
+  git -C "$primary" merge --ff-only "$branch" || die "fast-forward failed (integration moved?); nothing integrated"
+  echo ">> verifying combined state"
+  run_interruptible cmd_test_in "$primary" || die "tests failed on combined state; integration branch now at $(git -C "$primary" rev-parse --short HEAD). Report this."
+  git merge-base --is-ancestor "$branch" "$base" || die "integration check failed"
+  echo ">> integrated $branch into $base @ $(git rev-parse --short "$base")"
+  git -C "$primary" status --short
+}
+
+cmd_setup() {
+  local root; root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local py_bin; py_bin="$(command -v python || command -v python3 || command -v py)" || die "python 3.11+ not found"
+  [ -d "$root/.venv" ] || "$py_bin" -m venv "$root/.venv"
+  local vpy="$root/.venv/Scripts/python.exe"; [ -x "$vpy" ] || vpy="$root/.venv/bin/python"
+  "$vpy" -m pip install --quiet --upgrade pip
+  "$vpy" -c "import tomllib; p = tomllib.load(open('$root/pyproject.toml','rb'))['project']; print('\n'.join(p['dependencies'] + p['optional-dependencies']['dev']))" > "$root/.venv/requirements.txt"
+  "$vpy" -m pip install --quiet -r "$root/.venv/requirements.txt" -c "$root/constraints.txt"     || { echo "pinned versions unavailable here; installing latest compatible";          "$vpy" -m pip install --quiet -r "$root/.venv/requirements.txt" || die "pip install failed"; }
+  echo "setup done (./dev now uses ./.venv automatically). Next: ./dev test, then ./dev app (tick 'Use synthetic demo data')"
+  echo "real data: ./dev bootstrap   (see DATA.md; the repo ships no data)"
+}
+
+case "${1:-}" in
+  worktree)
+    require_repo
+    case "${2:-}" in
+      create) shift 2; cmd_worktree_create "$@" ;;
+      remove) shift 2; cmd_worktree_remove "$@" ;;
+      list)   git worktree list ;;
+      *) die "usage: ./dev worktree {create|remove|list} ..." ;;
+    esac ;;
+  test)      shift; cmd_test "$@" ;;
+  lint)      cmd_lint ;;
+  ci)        cmd_ci ;;
+  integrate) require_repo; cmd_integrate ;;
+  schedule)  shift; py -m src.ops.schedule "$@" ;;
+  setup)     cmd_setup ;;
+  bootstrap) shift; py -m src.ops.bootstrap "$@" ;;
+  app)       shift; py -m streamlit run src/app/draft_board.py "$@" ;;
+  data)      shift; py -m src.ops.share "$@" ;;
+  help|-h|--help) usage ;;
+  "") usage >&2; exit 1 ;;
+  *) usage >&2; die "unknown command: $1" ;;
+esac

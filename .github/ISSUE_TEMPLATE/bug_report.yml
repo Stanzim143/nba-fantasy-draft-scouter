@@ -1,0 +1,23 @@
+name: Bug report
+description: Something fails or gives a wrong result
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations: {required: true}
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: The exact commands (for example `./dev setup`, `./dev app`). Say whether you used synthetic demo data or rebuilt real data.
+    validations: {required: true}
+  - type: input
+    id: env
+    attributes:
+      label: OS and Python version
+      placeholder: Windows 11, Python 3.12
+  - type: markdown
+    attributes:
+      value: Do not paste cookies, `.env` contents, league IDs or downloaded data into an issue.
