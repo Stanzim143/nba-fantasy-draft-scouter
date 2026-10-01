@@ -488,9 +488,12 @@ def report_path(base: Path | None = None) -> Path:
 
 
 def _merge_events(existing: pd.DataFrame | None, new: pd.DataFrame, events: set[tuple[str, str]]) -> pd.DataFrame:
-    """Replace exactly the ``(event_season, context)`` events that were just pulled; keep the rest."""
+    """Replace exactly the ``(event_season, context)`` events that were just pulled; keep the rest. An event whose new
+    payload is empty never replaces previously stored rows (a blip must not erase a played event)."""
     if existing is not None and len(existing):
         pair = list(zip(existing["event_season"], existing["context"]))
+        new_pairs, old_pairs = set(zip(new["event_season"], new["context"])), set(pair)
+        events = {e for e in events if e in new_pairs or e not in old_pairs}
         keep = existing[[p not in events for p in pair]]
         frames = [f for f in (keep, new) if len(f)]
         merged = pd.concat(frames, ignore_index=True) if len(frames) > 1 else (frames[0].copy() if frames else new)

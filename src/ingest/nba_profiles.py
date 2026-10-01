@@ -215,9 +215,16 @@ def run_ingest(season: str, client: NBAClient, base: Path | None = None, *, comb
             except (NBAClientError, tf.TransformError) as exc:
                 result.combine_failed_years.append(y)
                 log(f"  draft combine {y} failed: {exc}")
-        if frames:
+        path = table_path(COMBINE_TABLE, base)
+        if result.combine_failed_years and not path.exists():
+            log(f"  draft_combine not written: years {result.combine_failed_years} failed and there is no earlier table; re-run")
+        elif frames:
             comb = pd.concat(frames, ignore_index=True)
-            write_parquet_atomic(comb, table_path(COMBINE_TABLE, base))
+            if result.combine_failed_years:      # keep the failed years' rows from the previous table
+                old = pd.read_parquet(path)
+                comb = pd.concat([old[~old["draft_year"].isin(result.combine_years)], comb], ignore_index=True)
+                comb = comb.sort_values(["draft_year", "player_id"], kind="stable").reset_index(drop=True)
+            write_parquet_atomic(comb, path)
             result.combine_rows = len(comb)
             log(f"  draft_combine: {len(comb)} rows for {len(result.combine_years)} draft years")
     result.network_requests = client.stats.network_requests

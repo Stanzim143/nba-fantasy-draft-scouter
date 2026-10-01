@@ -394,3 +394,15 @@ def test_cli_rejects_a_malformed_season_spec(tmp_path):
     with pytest.raises(SystemExit) as e:
         no.main(["--seasons", "nonsense", "--data-dir", str(tmp_path)], client=FakeClient({}))
     assert e.value.code == 2
+
+
+def test_an_empty_payload_never_replaces_a_stored_event():
+    cols = {"event_season": ["2020-21", "2021-22"], "context": [SL, SL], "game_id": ["a", "b"]}
+    existing = pd.DataFrame(cols)
+    empty_new = pd.DataFrame({"event_season": pd.Series(dtype=object), "context": pd.Series(dtype=object),
+                              "game_id": pd.Series(dtype=object)})
+    out = no._merge_events(existing, empty_new, {("2020-21", SL)})
+    assert list(out["game_id"]) == ["a", "b"]
+    fresh = pd.DataFrame({"event_season": ["2020-21"], "context": [SL], "game_id": ["c"]})
+    out = no._merge_events(existing, fresh, {("2020-21", SL)})
+    assert list(out["game_id"]) == ["c", "b"]

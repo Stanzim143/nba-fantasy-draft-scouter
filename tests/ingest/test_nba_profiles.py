@@ -74,3 +74,28 @@ def test_run_ingest_writes_tables_and_backs_up_once(tmp_path):
     npf.run_ingest("2026-27", FakeClient(), tmp_path, log=lambda *_: None)
     assert (tmp_path / "processed" / "player_profiles.parquet.bak_pre_profiles").exists()
     assert npf.read_combine(tmp_path)["draft_year"].min() == 2015
+
+
+class FailingYearClient(FakeClient):
+    def __init__(self, bad_year):
+        super().__init__()
+        self.bad_year = bad_year
+
+    def get(self, endpoint, params, *, refresh=False):
+        if endpoint == "draftcombinestats" and params["SeasonYear"].startswith(str(self.bad_year)):
+            raise npf.NBAClientError("boom")
+        return super().get(endpoint, params, refresh=refresh)
+
+
+def test_partial_combine_failure_never_truncates_the_table(tmp_path):
+    (tmp_path / "processed").mkdir()
+    # first run, a year fails and there is no earlier table: nothing is written
+    r = npf.run_ingest("2026-27", FailingYearClient(2020), tmp_path, birthdates=False, log=lambda *_: None)
+    assert r.combine_failed_years == [2020] and not (tmp_path / "processed" / "draft_combine.parquet").exists()
+    npf.run_ingest("2026-27", FakeClient(), tmp_path, birthdates=False, log=lambda *_: None)
+    full = npf.read_combine(tmp_path)
+    assert 2020 in set(full["draft_year"])
+    # later run with another year failing keeps that year's earlier rows
+    r = npf.run_ingest("2026-27", FailingYearClient(2018), tmp_path, birthdates=False, log=lambda *_: None)
+    assert r.combine_failed_years == [2018]
+    assert len(npf.read_combine(tmp_path)) == len(full) and 2018 in set(npf.read_combine(tmp_path)["draft_year"])
