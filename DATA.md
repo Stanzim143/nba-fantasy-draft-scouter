@@ -2,7 +2,9 @@
 
 **This repository contains no data and never will.** It ships scripts that rebuild the dataset on your
 own machine, from the original sources, under those sources' terms. Do not commit or redistribute what
-they download (`.gitignore` blocks the data directory; `./dev data pack` is for a *private* handoff only).
+they download (`.gitignore` blocks `data/`, `.ci-data/`, `.env*` (except `.env.example`) and the `*.parquet`, `*.csv`, `*.pdf`,
+`*.duckdb`, `*.zip` file types, and `tests/test_repo_hygiene.py` fails CI if a tracked file is over 1 MB or contains
+an `espn_s2`/`SWID` value; `./dev data pack` is for a *private* handoff only).
 
 | Data | Source | How you get it | Rights basis / caveat |
 |---|---|---|---|

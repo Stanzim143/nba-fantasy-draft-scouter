@@ -9,3 +9,21 @@ data/processed/
 .ipynb_checkpoints/
 *.egg-info/
 *.zip
+
+# Secrets / credentials (ESPN cookies, env files). Never commit.
+.env.*
+!.env.example
+*espn_s2*
+*swid*
+*cookies*.txt
+*cookies*.json
+
+# Data of any kind stays out of git (DATA.md): whole data dir, CI scratch dir, data file types.
+data/
+.ci-data/
+*.parquet
+*.csv
+*.pdf
+nightly.json
+daily_refresh.json
+history.jsonl

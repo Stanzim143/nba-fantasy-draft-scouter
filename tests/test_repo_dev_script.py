@@ -603,3 +603,33 @@ def test_shipped_script_is_lf_only_executable_in_git_and_valid_bash():
         assert res.stdout.startswith("100755"), "dev lost its executable bit in git"
     res = subprocess.run([BASH, "-n", DEV_SOURCE.as_posix()], capture_output=True, text=True)
     assert res.returncode == 0, res.stderr
+
+
+def test_setup_passes_paths_safely_and_warns_loudly_when_pinned_install_fails(sb: Sandbox, tmp_path: Path):
+    """cmd_setup must not splice the checkout path into python code (a quote in the path broke it), must hand
+    pip a native path, and must never silently fall back to unpinned installs."""
+    repo = tmp_path / "it's a repo"  # a single quote used to break the python -c string
+    shutil.copytree(sb.primary, repo)
+    (repo / "pyproject.toml").write_text(
+        '[project]\nname = "x"\ndependencies = ["alpha>=1"]\n[project.optional-dependencies]\ndev = ["beta"]\n',
+        encoding="utf-8")
+    (repo / "constraints.txt").write_text("alpha==1.0\n", encoding="utf-8")
+    fake = repo / ".venv" / "bin" / "python"
+    fake.parent.mkdir(parents=True)
+    log = tmp_path / "pip.log"
+    fake.write_text(
+        '#!/usr/bin/env bash\n'
+        'if [ "$1" = "-m" ] && [ "$2" = "pip" ]; then\n'
+        '  echo "$*" >> "$PIP_LOG"\n'
+        '  case "$*" in *" -c "*) exit 1;; esac\n'
+        '  exit 0\n'
+        'fi\n'
+        'exec "$REAL_PY" "$@"\n', encoding="utf-8")
+    fake.chmod(0o755)
+    env = {"PIP_LOG": str(log), "REAL_PY": sys.executable}
+    res = sb.dev(repo, "setup", env=env)
+    assert res.returncode == 0, res.stderr
+    assert (repo / ".venv" / "requirements.txt").read_text(encoding="utf-8").split() == ["alpha>=1", "beta"]
+    assert "WARNING" in res.stderr and "UNPINNED" in res.stderr
+    calls = log.read_text(encoding="utf-8").splitlines()
+    assert any("constraints.txt" in c for c in calls) and any("constraints.txt" not in c and "-r" in c for c in calls)

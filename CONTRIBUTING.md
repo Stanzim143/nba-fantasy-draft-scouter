@@ -13,7 +13,8 @@ the practical version.
 ```bash
 ./dev setup      # creates ./.venv with pinned dependencies; ./dev then uses it automatically
 ./dev test       # offline tests
-./dev app        # draft board; use the synthetic demo mode with no data
+./dev app        # draft board; use the synthetic demo mode with no data (localhost only: it has no
+                 # authentication, so do not pass --server.address 0.0.0.0)
 ```
 
 Real data is never distributed (see [`DATA.md`](DATA.md)); rebuild it with `./dev bootstrap`.
@@ -91,7 +92,8 @@ refresh ([ADR 0014](docs/adr/0014-daily-refresh-automation.md)), `--job nightly`
 ## Data and secrets
 
 - Never commit `.env`, cookies (`espn_s2`, `SWID`), raw pulls or licensed data. Copy
-  [`.env.example`](.env.example) to `.env` (gitignored) for local secrets.
+  [`.env.example`](.env.example) to `.env` (gitignored) for local secrets. CI installs with
+  `constraints.txt` and pins actions by commit SHA; `./dev setup` warns loudly if it must fall back to unpinned deps.
 - Data lives outside the repository in `NBA_DATA_DIR`. Respect the terms and rate limits of every source
   before automating a pull; see [ADR 0005](docs/adr/0005-data-sources.md) for the sources, terms and
   accepted/rejected decisions.

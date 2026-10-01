@@ -273,14 +273,27 @@ cmd_integrate() {
   git -C "$primary" status --short
 }
 
+# Path in the form the native tool expects (C:/Users/... under Git Bash on Windows; unchanged elsewhere).
+native_path() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s\n' "$1"; fi; }
+
 cmd_setup() {
   local root; root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   local py_bin; py_bin="$(command -v python || command -v python3 || command -v py)" || die "python 3.11+ not found"
   [ -d "$root/.venv" ] || "$py_bin" -m venv "$root/.venv"
   local vpy="$root/.venv/Scripts/python.exe"; [ -x "$vpy" ] || vpy="$root/.venv/bin/python"
   "$vpy" -m pip install --quiet --upgrade pip
-  "$vpy" -c "import tomllib; p = tomllib.load(open('$root/pyproject.toml','rb'))['project']; print('\n'.join(p['dependencies'] + p['optional-dependencies']['dev']))" > "$root/.venv/requirements.txt"
-  "$vpy" -m pip install --quiet -r "$root/.venv/requirements.txt" -c "$root/constraints.txt"     || { echo "pinned versions unavailable here; installing latest compatible";          "$vpy" -m pip install --quiet -r "$root/.venv/requirements.txt" || die "pip install failed"; }
+  # Paths go through sys.argv (never spliced into the code string), so quotes/backslashes in the
+  # path are harmless and a native-Windows venv python never sees a Git Bash /c/... path.
+  "$vpy" -c 'import sys, tomllib
+with open(sys.argv[1], "rb") as fh:
+    p = tomllib.load(fh)["project"]
+print("\n".join(p["dependencies"] + p["optional-dependencies"]["dev"]))' "$(native_path "$root/pyproject.toml")" > "$root/.venv/requirements.txt"
+  if ! "$vpy" -m pip install --quiet -r "$(native_path "$root/.venv/requirements.txt")" -c "$(native_path "$root/constraints.txt")"; then
+    echo "dev: WARNING: the pinned versions in constraints.txt could not be installed here." >&2
+    echo "dev: WARNING: falling back to UNPINNED latest-compatible versions; results may differ from CI." >&2
+    "$vpy" -m pip install --quiet -r "$(native_path "$root/.venv/requirements.txt")" || die "pip install failed"
+    echo "dev: WARNING: setup finished with unpinned dependencies (see above)." >&2
+  fi
   echo "setup done (./dev now uses ./.venv automatically). Next: ./dev test, then ./dev app (tick 'Use synthetic demo data')"
   echo "real data: ./dev bootstrap   (see DATA.md; the repo ships no data)"
 }
@@ -301,7 +314,15 @@ case "${1:-}" in
   schedule)  shift; py -m src.ops.schedule "$@" ;;
   setup)     cmd_setup ;;
   bootstrap) shift; py -m src.ops.bootstrap "$@" ;;
-  app)       shift; py -m streamlit run src/app/draft_board.py "$@" ;;
+  app)       shift
+             case " $* " in
+               *"server.address"*|*"--server.address"*)
+                 case "$*" in
+                   *"address=127.0.0.1"*|*"address 127.0.0.1"*|*"address=localhost"*|*"address localhost"*|*"address=::1"*|*"address ::1"*) ;;
+                   *) echo "dev: WARNING: the draft board has no authentication and shows your league data; binding it to a non-localhost address exposes it to your network. Prefer the default (localhost only)." >&2 ;;
+                 esac ;;
+             esac
+             py -m streamlit run src/app/draft_board.py "$@" ;;
   data)      shift; py -m src.ops.share "$@" ;;
   help|-h|--help) usage ;;
   "") usage >&2; exit 1 ;;
