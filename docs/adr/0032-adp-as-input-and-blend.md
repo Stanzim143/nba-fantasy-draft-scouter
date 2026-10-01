@@ -77,6 +77,6 @@ Reproduce: `python -m src.backtest --model baseline_hurdle_adp_offseason_debut -
 An independent review found that `--adp-blend auto` applied `adp_blend.json` to any board model although its coefficients are only valid
 for the model they were fitted on (`AdpBlend.model`). `load_blend(..., model)` now skips an `auto` blend fitted for a different model
 (warning) and only warns for an explicitly named path; the board CLI and the app loader pass their model. `adp_blend fit` now defaults to
-the board default `baseline_hurdle_adp_offseason_debut`; refit with `python -m src.value.adp_blend fit` right before the draft. The ADP-aware
+the board default `baseline_hurdle_adp_offseason_debut`; refit with `python -m src.value.adp_blend fit` when the model or the completed history changes. (A refit on 2026-10-02 reproduced the saved coefficients exactly, so the original "refit right before the draft" instruction above is not needed: the fit uses completed seasons only.) The ADP-aware
 projectors also log a warning when the ADP table, the injury-label table, or ADP for the target season is missing, instead of silently
 running as the base model.
