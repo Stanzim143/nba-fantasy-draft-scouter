@@ -42,7 +42,8 @@ def season_start(season: str) -> int:
     """'2023-24' -> 2023. Raises ValueError on malformed input."""
     try:
         start, end = season.split("-")
-        if len(start) != 4 or len(end) != 2 or int(end) != (int(start) + 1) % 100:
+        if (len(start) != 4 or len(end) != 2 or not (start.isascii() and start.isdigit() and end.isascii() and end.isdigit())
+                or int(end) != (int(start) + 1) % 100):
             raise ValueError
         return int(start)
     except (ValueError, AttributeError):
@@ -248,6 +249,8 @@ def validate_table(df: pd.DataFrame, name: str, *, allow_extra: bool = True) -> 
         if len(check) and not _KINDS[c.kind](check.dtype):
             if not (c.kind == "int" and c.nullable and _all_integral(check)):
                 problems.append(f"{col}: dtype {s.dtype} is not {c.kind}")
+        elif c.kind == "str" and len(check) and pd.api.types.is_object_dtype(check.dtype)                 and not check.map(lambda v: isinstance(v, str)).all():
+            problems.append(f"{col}: object column holds non-string values")   # e.g. ints mixed into a str column
     if not missing:
         dup = df.duplicated(list(spec.key)).sum()
         if dup:

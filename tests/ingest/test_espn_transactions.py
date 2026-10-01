@@ -361,3 +361,9 @@ def test_run_ingest_writes_the_ledger_and_a_rerun_adds_nothing(tmp_path):
 def test_a_reversed_window_is_refused(tmp_path):
     with pytest.raises(et.EspnTransactionsError):
         et.run_ingest(date(2026, 9, 25), date(2026, 9, 1), FakeClient({}), tmp_path)
+
+
+def test_a_naive_now_is_treated_as_utc():
+    naive = et._frame([], datetime(2026, 9, 25, 8))
+    aware = et._frame([], datetime(2026, 9, 25, 8, tzinfo=timezone.utc))
+    assert naive.equals(aware)

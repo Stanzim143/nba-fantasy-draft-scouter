@@ -259,3 +259,15 @@ def test_projector_protocol_runtime_check():
 def test_projection_spec_has_all_stat_columns():
     assert set(C.PROJECTION_STATS) <= set(C.PROJECTIONS.columns)
     assert len(C.PROJECTION_STATS) == len(C.STAT_COLUMN_MAP)
+
+
+def test_str_column_rejects_mixed_object_values():
+    spec = C.TABLES["players"]
+    df = make_synthetic_tables(**SMALL)["players"].copy()
+    C.validate_table(df, "players")
+    bad = df.copy()
+    bad["player_name"] = bad["player_name"].astype(object)
+    bad.loc[bad.index[0], "player_name"] = 123
+    with pytest.raises(C.ContractError, match="non-string"):
+        C.validate_table(bad, "players")
+    assert spec.columns["player_name"].kind == "str"

@@ -22,7 +22,9 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import zipfile
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -67,6 +69,13 @@ def _clean_cell(val):
     return val
 
 
+def _number(val: Any, kind: type, column: str, what: str):
+    try:
+        return kind(val)
+    except (ValueError, TypeError) as exc:
+        raise YahooRankingsError(f"{what}: non-numeric {column} {val!r}") from exc
+
+
 def parse_yahoo_xlsx(path: Path) -> pd.DataFrame:
     """Parse the "Players" sheet of a Yahoo draft-analysis workbook into the ``resolve_players``
     "parsed" shape: ``source_id, source_name_raw, name_parsed, team, positions, status_tag, ext_rank,
@@ -75,8 +84,8 @@ def parse_yahoo_xlsx(path: Path) -> pd.DataFrame:
     """
     try:
         sheets = pd.read_excel(path, sheet_name=None, header=None, engine="openpyxl")
-    except (ValueError, KeyError) as exc:
-        raise YahooRankingsError(f"could not open {path}: {exc}") from exc
+    except (ValueError, KeyError, zipfile.BadZipFile) as exc:
+        raise YahooRankingsError(f"could not open {path}: {type(exc).__name__}: {exc}") from exc
 
     if PLAYERS_SHEET not in sheets:
         raise YahooRankingsError(
@@ -98,6 +107,7 @@ def parse_yahoo_xlsx(path: Path) -> pd.DataFrame:
         raise YahooRankingsError(f"{path}: header row missing expected column(s) {sorted(missing)}")
 
     out_rows = []
+    seen_ids: set[str] = set()
     for row in data.itertuples(index=False):
         d = dict(zip(data.columns, row))
         display_order = _clean_cell(d.get("Yahoo Display Order"))
@@ -108,15 +118,23 @@ def parse_yahoo_xlsx(path: Path) -> pd.DataFrame:
         all_drafts_adp = _clean_cell(d.get("All Drafts ADP"))
         preseason_adp = _clean_cell(d.get("Preseason ADP"))
         adp = all_drafts_adp if all_drafts_adp is not None else preseason_adp
+        what = f"{path.name}: row with Yahoo Display Order {display_order!r} ({player!r})"
+        source_id = str(_number(display_order, int, "Yahoo Display Order", what))
+        if source_id in seen_ids:
+            raise YahooRankingsError(f"{what}: duplicate Yahoo Display Order {source_id}")
+        seen_ids.add(source_id)
+        rank = _clean_cell(d.get("Rank"))
+        if rank is None:
+            raise YahooRankingsError(f"{what}: blank Rank")
         out_rows.append({
-            "source_id": str(int(display_order)),
+            "source_id": source_id,
             "source_name_raw": player,
             "name_parsed": player,
             "team": _clean_cell(d.get("Team")),
             "positions": _clean_cell(d.get("Eligible Positions")),
             "status_tag": status,
-            "ext_rank": int(_clean_cell(d.get("Rank"))),
-            "adp": float(adp) if adp is not None else None,
+            "ext_rank": _number(rank, int, "Rank", what),
+            "adp": _number(adp, float, "ADP", what) if adp is not None else None,
             "ecr_vs_adp": None,
         })
 

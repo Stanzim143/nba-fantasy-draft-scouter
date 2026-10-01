@@ -237,3 +237,26 @@ def test_main_reports_failure_cleanly(tmp_path, capsys, monkeypatch):
     assert rc == 1
     captured = capsys.readouterr()
     assert "yahoo rankings ingest failed" in captured.err
+
+
+def _bad_workbook(tmp_path, row):
+    return make_workbook(tmp_path / "bad.xlsx", [DATA_ROWS[0], row])
+
+
+@pytest.mark.parametrize("row,msg", [
+    ((2, "X", "DEN", "C", None, None, 1, 1.9, 1.9), "blank Rank"),
+    ((2, "X", "DEN", "C", None, "abc", 1, 1.9, 1.9), "non-numeric Rank"),
+    ((2, "X", "DEN", "C", None, 2, 1, "abc", "abc"), "non-numeric ADP"),
+    (("abc", "X", "DEN", "C", None, 2, 1, 1.9, 1.9), "non-numeric Yahoo Display Order"),
+    ((1, "Dup", "DEN", "C", None, 2, 1, 1.9, 1.9), "duplicate Yahoo Display Order"),
+])
+def test_bad_cells_raise_a_clean_error(tmp_path, row, msg):
+    with pytest.raises(yr.YahooRankingsError, match=msg):
+        yr.parse_yahoo_xlsx(_bad_workbook(tmp_path, row))
+
+
+def test_a_corrupt_xlsx_raises_a_clean_error(tmp_path):
+    p = tmp_path / "broken.xlsx"
+    p.write_bytes(b"this is not a zip file")
+    with pytest.raises(yr.YahooRankingsError, match="could not open"):
+        yr.parse_yahoo_xlsx(p)

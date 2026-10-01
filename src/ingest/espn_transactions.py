@@ -565,7 +565,8 @@ def _frame(records: list[dict[str, Any]], now: datetime) -> pd.DataFrame:
     backfill, or the first run's long lookback): its ``first_seen`` is its own date, so "new since I last looked" never
     floods with old moves."""
     df = pd.DataFrame(records, columns=COLUMNS[:-2])
-    stamp = pd.Timestamp(now).tz_convert("UTC").tz_localize(None)
+    stamp = pd.Timestamp(now)
+    stamp = (stamp.tz_localize("UTC") if stamp.tzinfo is None else stamp.tz_convert("UTC")).tz_localize(None)   # naive = UTC
     df["last_seen"] = stamp
     df["first_seen"] = stamp
     old = pd.to_datetime(df["txn_date"]) < stamp.normalize() - pd.Timedelta(days=HISTORICAL_DAYS)
