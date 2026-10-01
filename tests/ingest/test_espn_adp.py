@@ -259,6 +259,32 @@ def test_merge_id_map_replaces_only_its_own_source(tmp_path):
     assert len(merged) == 2
 
 
+def test_run_ingest_keeps_other_seasons_and_idmap_rows_from_earlier_runs(tmp_path):
+    base = tmp_path / "data"
+    make_players_table(base)
+    c1, _ = make_client(tmp_path, [espn_response([espn_player(100, "Stephen Curry", 1.5)])])
+    ea.run_ingest(["2022-23"], c1, base, fill_gap=False, min_real_adp=1, log=lambda *_: None)
+    c2, _ = make_client(tmp_path / "b", [espn_response([espn_player(200, "Jimmy Butler", 9.0)])])
+    res = ea.run_ingest(["2023-24"], c2, base, fill_gap=False, min_real_adp=1, log=lambda *_: None)
+    adp = pd.read_parquet(ea.adp_path(base))
+    assert set(adp["season"]) == {"2022-23", "2023-24"} and res.adp_rows == 2
+    assert set(read_table("player_id_map", base)["source_id"]) == {"100", "200"}
+    # re-running a season replaces just that season
+    c3, _ = make_client(tmp_path / "c", [espn_response([espn_player(200, "Jimmy Butler", 4.0)])])
+    ea.run_ingest(["2023-24"], c3, base, fill_gap=False, min_real_adp=1, log=lambda *_: None)
+    adp = pd.read_parquet(ea.adp_path(base))
+    assert len(adp) == 2 and adp[adp["season"] == "2023-24"]["adp"].iloc[0] == 4.0
+
+
+def test_main_puts_the_raw_cache_under_data_dir(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(ea, "run_ingest", lambda seasons, client, base, **kw: seen.append(client.cache_dir) or
+                        ea.AdpIngestResult(seasons=seasons))
+    base = tmp_path / "data"
+    assert ea.main(["--seasons", "2023-24", "--data-dir", str(base), "--offline"]) == 0
+    assert seen[0] == base / "raw" / ea.CACHE_DIR_NAME
+
+
 # --------------------------------------------------------------------------- CLI parsing
 
 def test_build_parser_seasons_required():

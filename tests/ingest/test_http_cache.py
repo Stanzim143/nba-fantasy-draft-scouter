@@ -111,6 +111,13 @@ def test_offline_corrupt_cache_raises_instead_of_silently_refetching(tmp_path):
         offline.get_json("players", URL, PARAMS)
 
 
+def test_cached_json_null_is_a_hit_not_a_miss(tmp_path):
+    client, session, _ = make(tmp_path, [FakeResponse(200, "null")])
+    assert client.get_json("players", URL, PARAMS) is None
+    assert client.get_json("players", URL, PARAMS) is None
+    assert len(session.calls) == 1 and client.stats.cache_hits == 1
+
+
 def test_online_corrupt_cache_is_quarantined_and_refetched(tmp_path):
     client, session, _ = make(tmp_path, [FakeResponse(200, {"a": 1})])
     path = client.cache_path("players", PARAMS, ext="json")

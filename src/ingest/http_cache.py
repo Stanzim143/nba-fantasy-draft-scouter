@@ -36,6 +36,8 @@ from src.contracts import raw_dir
 
 OFFLINE_ENV = "NBA_OFFLINE"  # reuse the project-wide offline convention (see nba_client.py)
 
+_MISS = object()  # sentinel: a cached JSON ``null`` is a valid hit, not a miss
+
 RETRYABLE_STATUS = frozenset({403, 408, 425, 429, 500, 502, 503, 504})
 
 
@@ -161,14 +163,14 @@ class CachedHttpClient:
         try:
             raw = path.read_bytes()
         except FileNotFoundError:
-            return None
+            return _MISS
         try:
             return parse(raw)
         except Exception as exc:  # noqa: BLE001 - any parse failure means "not usable"
             if self.offline:
                 raise CacheCorruptError(f"corrupt cache file {path}: {exc}") from exc
             path.replace(path.with_suffix(path.suffix + ".corrupt"))
-            return None
+            return _MISS
 
     # ----- public API
 
@@ -195,8 +197,8 @@ class CachedHttpClient:
                     parse: Callable[[bytes], Any]) -> bytes:
         if refresh and self.offline:
             raise OfflineCacheMiss(f"offline mode: cannot refresh {label} {dict(params)}")
-        cached = None if refresh else self._read_cache(path, parse=parse)
-        if cached is not None:
+        cached = _MISS if refresh else self._read_cache(path, parse=parse)
+        if cached is not _MISS:
             self.stats.cache_hits += 1
             return path.read_bytes()
         if self.offline:

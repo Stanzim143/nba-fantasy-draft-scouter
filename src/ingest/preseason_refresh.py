@@ -33,7 +33,7 @@ import pandas as pd
 from src.contracts import ContractError, data_dir, season_start, season_str
 from src.ingest import espn_adp, espn_status, espn_transactions, nba_incoming, nba_offseason, nba_profiles, wiki_coaches
 from src.ingest import nba_transform as tf
-from src.ingest.http_cache import CachedHttpClient, HttpCacheError, default_cache_dir
+from src.ingest.http_cache import CachedHttpClient, HttpCacheError
 from src.ingest.nba_client import NBAClient, NBAClientError
 
 STEPS = ("roster", "offseason", "adp")
@@ -117,7 +117,7 @@ def step_transactions(season: str, base: Path, espn: CachedHttpClient, log: Call
 def step_coaches(season: str, base: Path, offline: bool, log: Callable[[str], None]) -> dict[str, Any]:
     """Refresh the live season's head coaches from Wikipedia's list of current head coaches (one request; ADR 0020)."""
     season_start(season)
-    wiki = CachedHttpClient(default_cache_dir(wiki_coaches.CACHE_DIR_NAME), offline=True if offline else None, min_interval=1.0,
+    wiki = CachedHttpClient(base / "raw" / wiki_coaches.CACHE_DIR_NAME, offline=True if offline else None, min_interval=1.0,
                             headers={"User-Agent": wiki_coaches.UA})
     r = wiki_coaches.run_current(season, wiki, base, log=log)
     table = wiki_coaches.read_team_coaches(base)
@@ -216,8 +216,8 @@ def main(argv: Sequence[str] | None = None, *, nba: NBAClient | None = None, esp
     base = args.data_dir or data_dir()
     offline = True if args.offline else None
     nba = nba or NBAClient(base / "raw" / "nba_api", offline=offline, min_interval=1.0)
-    espn = espn or CachedHttpClient(default_cache_dir(espn_adp.CACHE_DIR_NAME), offline=offline, min_interval=2.0)
-    fp = fp or CachedHttpClient(default_cache_dir(espn_adp.FP_CACHE_DIR_NAME), offline=offline, min_interval=5.0)
+    espn = espn or CachedHttpClient(base / "raw" / espn_adp.CACHE_DIR_NAME, offline=offline, min_interval=2.0)
+    fp = fp or CachedHttpClient(base / "raw" / espn_adp.FP_CACHE_DIR_NAME, offline=offline, min_interval=5.0)
     try:
         results = run_refresh(args.season, base, nba=nba, espn=espn, fp=fp, steps=steps)
     except ValueError as exc:

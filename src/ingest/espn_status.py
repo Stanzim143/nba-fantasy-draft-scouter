@@ -18,7 +18,7 @@ import argparse
 import os
 import sys
 import tempfile
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +26,7 @@ import pandas as pd
 
 from src.contracts import data_dir, season_str
 from src.ingest import espn_adp
-from src.ingest.http_cache import CachedHttpClient, default_cache_dir
+from src.ingest.http_cache import CachedHttpClient
 from src.ingest.nba_offseason import live_season_start
 
 TABLE = "espn_status_snapshots"
@@ -99,10 +99,23 @@ def latest_status(snapshots: pd.DataFrame) -> pd.DataFrame:
     return snapshots[snapshots["snapshot_date"] == snapshots["snapshot_date"].max()].reset_index(drop=True)
 
 
+MAX_CACHE_AGE = timedelta(days=1)
+
+
 def run_ingest(season: str, client: CachedHttpClient, base: Path | None = None, *, snapshot_date: date | None = None,
-               log=print) -> dict[str, Any]:
+               max_age: timedelta = MAX_CACHE_AGE, now: datetime | None = None, log=print) -> dict[str, Any]:
+    """Archive the cached ESPN payload as a snapshot dated by when that payload was *fetched* (cache file mtime),
+    never by today's date. A payload older than ``max_age`` is refused: archiving it would present stale injury
+    statuses as a fresh point-in-time record."""
     base = base or data_dir()
-    raw = espn_adp.fetch_espn_players(client, espn_adp.espn_season_id(season), refresh=False)
+    sid = espn_adp.espn_season_id(season)
+    raw = espn_adp.fetch_espn_players(client, sid, refresh=False)
+    fetched = datetime.fromtimestamp(client.cache_path(f"players/{sid}", espn_adp.players_params()).stat().st_mtime)
+    age = (now or datetime.now()) - fetched
+    if age > max_age:
+        raise espn_adp.EspnAdpError(
+            f"cached ESPN players payload for {season} was fetched {fetched:%Y-%m-%d %H:%M}, {age} ago (> {max_age}); "
+            "refresh it first (`python -m src.ingest.preseason_refresh --only adp`) rather than archiving stale statuses")
     id_map = None
     try:
         from src.store import read_table
@@ -110,7 +123,9 @@ def run_ingest(season: str, client: CachedHttpClient, base: Path | None = None, 
         id_map = read_table("player_id_map", base, validate=False)
     except FileNotFoundError:
         pass
-    day = status_frame(raw, season, snapshot_date or date.today(), id_map)
+    day = status_frame(raw, season, snapshot_date or fetched.date(), id_map)
+    if day.empty:
+        raise espn_adp.EspnAdpError(f"ESPN players payload for {season} has no usable players; nothing archived")
     write_snapshot(day, base)
     counts = day["injury_status"].value_counts().to_dict()
     log(f"  espn_status_snapshots: {len(day)} players on {day['snapshot_date'].iloc[0].date()}: {counts}")
@@ -130,7 +145,7 @@ def main(argv=None, *, client: CachedHttpClient | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
     base = args.data_dir or data_dir()
-    client = client or CachedHttpClient(default_cache_dir(espn_adp.CACHE_DIR_NAME), offline=True if args.offline else None,
+    client = client or CachedHttpClient(base / "raw" / espn_adp.CACHE_DIR_NAME, offline=True if args.offline else None,
                                         min_interval=2.0)
     try:
         r = run_ingest(args.season, client, base)

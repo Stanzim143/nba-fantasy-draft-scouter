@@ -48,7 +48,7 @@ import pandas as pd
 from src.contracts import (
     ContractError, data_dir, season_start, season_str, seasons_between, validate_table,
 )
-from src.ingest.http_cache import CachedHttpClient, HttpCacheError, default_cache_dir
+from src.ingest.http_cache import CachedHttpClient, HttpCacheError
 from src.ingest.id_map import MatchReport, match_players
 from src.store import read_table, table_exists, write_table
 
@@ -125,11 +125,15 @@ def fantasy_filter(limit: int, season_id: int) -> dict:
     }
 
 
+def players_params(limit: int = 600) -> dict:
+    return {"view": "kona_player_info", "limit": limit}
+
+
 def fetch_espn_players(client: CachedHttpClient, season_id: int, *, limit: int = 600,
                        refresh: bool = False) -> list[dict]:
     url = PLAYERS_URL.format(season_id=season_id)
     headers = {"X-Fantasy-Filter": json.dumps(fantasy_filter(limit, season_id)), "User-Agent": UA}
-    payload = client.get_json(f"players/{season_id}", url, {"view": "kona_player_info", "limit": limit},
+    payload = client.get_json(f"players/{season_id}", url, players_params(limit),
                               headers=headers, refresh=refresh)
     if not isinstance(payload, list):
         raise EspnAdpError(f"season {season_id}: expected a JSON list of players, got {type(payload).__name__}")
@@ -338,6 +342,10 @@ def run_ingest(
     adp["adp"] = adp["adp"].astype("float64")
     adp = adp.sort_values(["season", "adp"], kind="stable").reset_index(drop=True)
 
+    # Replace only this run's seasons (a wiped season with no gap-fill keeps its old rows); every other
+    # season already in adp.parquet survives, like nba_stats.merge_seasons.
+    replaced = sorted(set(seasons) - (set(result.wiped) - set(result.gap_filled)))
+    adp = merge_adp(read_adp_if_exists(base), adp, replaced)
     written_adp_path = write_adp(adp, base)
     written_id_map_path = write_table(id_map, "player_id_map", base)
     result.adp_rows = len(adp)
@@ -379,15 +387,33 @@ def write_adp(df: pd.DataFrame, base: Path | None = None) -> Path:
     return path
 
 
+def read_adp_if_exists(base: Path | None = None) -> pd.DataFrame | None:
+    return pd.read_parquet(adp_path(base)) if adp_path(base).exists() else None
+
+
+def merge_adp(existing: pd.DataFrame | None, new: pd.DataFrame, seasons: list[str]) -> pd.DataFrame:
+    """Replace ``seasons`` in ``existing`` with ``new``; keep every other season."""
+    if existing is None or existing.empty:
+        return new
+    kept = existing[~existing["season"].isin(seasons)]
+    frames = [f for f in (kept, new) if len(f)]
+    if not frames:
+        return new
+    merged = pd.concat(frames, ignore_index=True) if len(frames) > 1 else frames[0].copy()
+    merged["adp"] = merged["adp"].astype("float64")
+    return merged.sort_values(["season", "adp"], kind="stable").reset_index(drop=True)
+
+
 def _existing_id_map(base: Path) -> pd.DataFrame | None:
     return read_table("player_id_map", base, validate=False) if table_exists("player_id_map", base) else None
 
 
 def merge_id_map(existing: pd.DataFrame | None, new: pd.DataFrame, *, source: str) -> pd.DataFrame:
-    """Replace this source's rows with the freshly matched set; leave every other source untouched."""
+    """Upsert this source's freshly matched rows by ``source_id`` (rows for players outside this run are
+    kept); leave every other source untouched."""
     if existing is None or existing.empty:
         return new.reset_index(drop=True)
-    kept = existing[existing["source"] != source]
+    kept = existing[(existing["source"] != source) | ~existing["source_id"].isin(set(new["source_id"]))]
     frames = [f for f in (kept, new) if len(f)]
     merged = pd.concat(frames, ignore_index=True) if len(frames) > 1 else frames[0].copy()
     return merged.sort_values(["source", "source_id"], kind="stable").reset_index(drop=True)
@@ -452,10 +478,10 @@ def main(argv: list[str] | None = None, *, client: CachedHttpClient | None = Non
         args.min_interval = 2.0
     base = args.data_dir or data_dir()
     if client is None:
-        client = CachedHttpClient(default_cache_dir(CACHE_DIR_NAME), offline=True if args.offline else None,
+        client = CachedHttpClient(base / "raw" / CACHE_DIR_NAME, offline=True if args.offline else None,
                                   min_interval=args.min_interval, max_retries=args.max_retries)
     if fp_client is None:
-        fp_client = CachedHttpClient(default_cache_dir(FP_CACHE_DIR_NAME), offline=True if args.offline else None,
+        fp_client = CachedHttpClient(base / "raw" / FP_CACHE_DIR_NAME, offline=True if args.offline else None,
                                      min_interval=max(args.min_interval, 5.0), max_retries=args.max_retries)
     try:
         result = run_ingest(seasons, client, base, limit=args.limit, refresh=args.refresh,
