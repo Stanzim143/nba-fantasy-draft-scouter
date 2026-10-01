@@ -6,7 +6,7 @@ Stable API (do not change without telling the backtest track)::
     get_projector(name, **kwargs) -> Projector      # fresh instance; kwargs go to the constructor
     register_projector(name, factory)               # add a model (e.g. an ablation variant)
 
-Built-ins: ``"naive_last_season"``, ``"baseline"``, ``"baseline_injury"`` (ADR 0006), ``"baseline_return"``, ``"baseline_injury_return"`` and ``"baseline_return_offseason_debut"`` (ADR 0022),
+Built-ins: ``"naive_last_season"``, ``"baseline"``, ``"baseline_hurdle"`` (ADR 0031), ``"baseline_adp"``, ``"baseline_hurdle_adp"`` (ADR 0032) and the board stacks ``"baseline_hurdle_offseason_debut"`` / ``"baseline_hurdle_adp_offseason_debut"``, ``"baseline_injury"`` (ADR 0006), ``"baseline_return"``, ``"baseline_injury_return"`` and ``"baseline_return_offseason_debut"`` (ADR 0022),
 ``"baseline_roster"`` (ADR 0010), ``"baseline_transactions"`` (ADR 0011), ``"baseline_contract"`` (ADR 0013), ``"baseline_contract_terms"`` (ADR 0019), ``"baseline_coach"`` (ADR 0020) and the offseason family
 (ADR 0012): ``"baseline_offseason"`` (Summer League + preseason), ``"baseline_summer_league"`` and
 ``"baseline_preseason"`` (one context each, for the ablation), and the debutant family (ADR 0016):
@@ -19,6 +19,8 @@ from __future__ import annotations
 from typing import Callable
 
 from src.contracts import Projector
+from src.models.adp_baseline import (AdpDebutantProjector, BaselineAdpLabelsProjector, BaselineAdpProjector,
+                                     BaselineLabelsProjector)
 from src.models.baseline import BaselineProjector
 from src.models.config import BaselineConfig
 from src.models.coach_baseline import BaselineCoachProjector
@@ -32,11 +34,23 @@ from src.models.return_baseline import BaselineInjuryReturnProjector, BaselineRe
 from src.models.roster_baseline import BaselineRosterProjector
 from src.models.transactions_baseline import BaselineTransactionsProjector
 
+_HURDLE = BaselineConfig(appearance_hurdle=True, season_intervals=True)     # ADR 0031 / 0033
+
 _REGISTRY: dict[str, Callable[..., Projector]] = {
     "naive_last_season": lambda **kw: NaiveLastSeason(**kw),
     "baseline": lambda **kw: BaselineProjector(**kw),
     "baseline_nopos": lambda **kw: BaselineProjector(
         **{"config": BaselineConfig(use_position_priors=False), "name": "baseline_nopos", **kw}),
+    "baseline_hurdle": lambda **kw: BaselineProjector(
+        **{"config": _HURDLE, "name": "baseline_hurdle", **kw}),
+    "baseline_adp": lambda **kw: BaselineAdpProjector(**kw),
+    "baseline_hurdle_adp": lambda **kw: BaselineAdpProjector(
+        **{"config": _HURDLE, "name": "baseline_hurdle_adp", **kw}),
+    "baseline_labels": lambda **kw: BaselineLabelsProjector(**kw),
+    "baseline_hurdle_labels": lambda **kw: BaselineLabelsProjector(
+        **{"config": _HURDLE, "name": "baseline_hurdle_labels", **kw}),
+    "baseline_hurdle_adp_labels": lambda **kw: BaselineAdpLabelsProjector(
+        **{"config": _HURDLE, "name": "baseline_hurdle_adp_labels", **kw}),
     "baseline_injury": lambda **kw: BaselineInjuryProjector(**kw),
     "baseline_return": lambda **kw: BaselineReturnProjector(**kw),
     "baseline_injury_return": lambda **kw: BaselineInjuryReturnProjector(**kw),
@@ -57,6 +71,10 @@ _REGISTRY: dict[str, Callable[..., Projector]] = {
         **{"base": DebutantBaselineProjector(), "name": "baseline_offseason_debut", **kw}),
     "baseline_return_offseason_debut": lambda **kw: BaselineOffseasonProjector(
         **{"base": ReturnDebutantProjector(), "name": "baseline_return_offseason_debut", **kw}),
+    "baseline_hurdle_offseason_debut": lambda **kw: BaselineOffseasonProjector(
+        **{"base": DebutantBaselineProjector(config=_HURDLE), "name": "baseline_hurdle_offseason_debut", **kw}),
+    "baseline_hurdle_adp_offseason_debut": lambda **kw: BaselineOffseasonProjector(
+        **{"base": AdpDebutantProjector(config=_HURDLE), "name": "baseline_hurdle_adp_offseason_debut", **kw}),
     "baseline_offseason_rich": lambda **kw: BaselineOffseasonProjector(
         **{"components": True, "name": "baseline_offseason_rich", **kw}),
     "baseline_summer_league_rich": lambda **kw: BaselineOffseasonProjector(

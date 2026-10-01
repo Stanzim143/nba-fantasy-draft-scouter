@@ -40,6 +40,9 @@ Status as of 2026-09-29.
 | [0028](0028-external-rankings-compare.md) | External rankings comparison: manually-exported Yahoo and FantasyPros snapshots parsed, matched onto player_id, and compared against our own board rank, with a documented rank_delta sign convention | Accepted |
 | [0029](0029-rankings-disagreement-flag.md) | Advisory "external rankings disagreement" flag: a fixed, data-grounded 50-rank-spot threshold on ADR 0028's rank_delta, surfaced session-scoped on the draft board's Debutants & risk tab, no projection change | Accepted |
 | [0030](0030-methodology-critique-fixes.md) | Methodology critique: rate-shrinkage tuning on predicted (not actual) MPG, ADP + model arm and per-tier comparison vs ADP, risk-group availability calibration, position-prior ablation, disclosed limits | Accepted |
+| [0031](0031-hurdle-availability.md) | Hurdle availability: model the chance a player appears at all (P(appear) x conditional games played) | Accepted |
+| [0032](0032-adp-as-input-and-blend.md) | ADP as an input to availability and minutes, and as a blended board rank | Accepted |
+| [0033](0033-season-intervals-and-injury-labels.md) | Season-total intervals, labelled NBA injury-report data, point-in-time positions not built | Accepted |
 
 ## Writing a new ADR
 

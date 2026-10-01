@@ -139,7 +139,8 @@ class BaselineOffseasonProjector:
             out["offseason_factor"] = factor
             out["proj_fppg"] = new_fppg
             out["proj_total_fp"] = out["proj_fppg"] * out["proj_gp"]
-            for c in ("fppg_p10", "fppg_p50", "fppg_p90", "proj_fppg_sd"):
+            for c in ("fppg_p10", "fppg_p50", "fppg_p90", "proj_fppg_sd",
+                      "proj_total_fp_p10", "proj_total_fp_p50", "proj_total_fp_p90"):      # all scale with the FPPG factor
                 if c in out.columns:
                     out[c] = out[c].to_numpy(float) * factor
             out["offseason_enabled"] = True

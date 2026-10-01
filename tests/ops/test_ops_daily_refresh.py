@@ -247,7 +247,7 @@ def test_extras_workers_delegate_to_refresh_steps(tmp_path, monkeypatch):
 def test_default_boards_include_the_debut_board_and_report_says_so():
     from src.ops.daily_report import render_report
 
-    assert dr.Settings.__dataclass_fields__["board_models"].default == ("baseline", "auto", "baseline_offseason_debut")
+    assert dr.Settings.__dataclass_fields__["board_models"].default == ("baseline", "auto", "baseline_offseason_debut", "baseline_hurdle_adp_offseason_debut")
     run = {"date": "2026-10-01", "outcome": "ok", "run_id": "r", "season": "2026-27",
            "boards": {"baseline_offseason_debut": {"path": "x.csv", "rows": 796, "top": [{"rank": 1, "name": "A"}]},
                       "baseline": {"path": "y.csv", "rows": 739, "top": [{"rank": 1, "name": "A"}]}}}

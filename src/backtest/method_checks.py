@@ -96,6 +96,54 @@ def adp_model_arms(model: BacktestResult, adp: pd.DataFrame, *, ks: Sequence[int
     return ArmResult(seasons, frames, {a: pd.DataFrame(r).set_index("season") for a, r in rows.items()})
 
 
+def blend_universe_table(model: BacktestResult, adp: pd.DataFrame, *, ks: Sequence[int] = TIER_KS,
+                         min_gp: int = M.DEFAULT_MIN_GP) -> pd.DataFrame:
+    """The board's ADP blend (``src.value.adp_blend``) against the model it blends, on the *whole* projected universe.
+
+    For each season after the first the blend is fit on earlier seasons only, applied to that season's projections
+    (ADP-listed players get the regression, everyone else keeps the model total) and scored like the model itself:
+    rows are season means of Spearman, top-N hit and total-FP MAE, then the season-paired difference (blend - model)
+    with a t interval and seasons won. This is what a draft-board user would see, including players ADP does not list.
+    """
+    from src.value.adp_blend import MIN_ROWS, blend_totals, fit_adp_blend
+
+    seasons = [s for s in model.seasons[1:] if (adp["season"] == s).any()]
+    if not seasons:
+        raise ValueError("need at least two backtest seasons with ADP to fit the blend")
+    per_season = {s: model.season_frame(s).merge(adp[adp["season"] == s][["player_id", "adp"]], on="player_id", how="left")
+                  for s in model.seasons}
+    arms: dict[str, list] = {"model": [], "blend": []}
+    for s in seasons:
+        prior = {p: per_season[p] for p in model.seasons if season_start(p) < season_start(s)
+                 and per_season[p]["adp"].notna().any()}
+        if sum(int(fr["adp"].notna().sum()) for fr in prior.values()) < MIN_ROWS:
+            continue                                   # too little earlier ADP to fit the regression: season not scored
+        blend = fit_adp_blend(prior, model="model")
+        f = per_season[s].copy()
+        proj = f["projected"].to_numpy()
+        blended = f["proj_total_fp"].to_numpy(float).copy()
+        listed = f["adp"].notna().to_numpy() & proj
+        if listed.any():
+            blended[listed] = blend_totals(f.loc[listed], f.loc[listed, ["player_id", "adp"]], blend).to_numpy()
+        for arm, vals in (("model", f["proj_total_fp"].to_numpy(float)), ("blend", blended)):
+            fr = f.drop(columns=["adp"]).copy()
+            fr["proj_total_fp"] = np.where(proj, vals, np.nan)
+            m = M.compute_season_metrics(fr, ks=ks, min_gp=min_gp, rank_only=True)
+            pr = fr[fr["projected"]]
+            m["mae_total_fp"] = M.mae(pr["proj_total_fp"], pr["actual_total_fp"])
+            m["season"] = s
+            arms[arm].append(m)
+    if not arms["model"]:
+        raise ValueError("need at least two backtest seasons with ADP to fit the blend")
+    mets = {a: pd.DataFrame(r).set_index("season") for a, r in arms.items()}
+    rows = []
+    for col in ["spearman_total_fp"] + [f"top{k}_hit" for k in ks] + ["mae_total_fp"]:
+        p = _paired(mets["model"][col], mets["blend"][col])
+        rows.append({"metric": col, "model": float(mets["model"][col].mean()), "blend": float(mets["blend"][col].mean()),
+                     "blend - model": p["diff"], "95% CI": f"[{p['lo']:+.3f}, {p['hi']:+.3f}]", "seasons won": p["wins"]})
+    return pd.DataFrame(rows)
+
+
 def _paired(a: pd.Series, b: pd.Series) -> dict:
     d = (b - a).to_numpy(float)
     d = d[np.isfinite(d)]
@@ -225,6 +273,73 @@ def risk_group_table(result: BacktestResult, game_logs: pd.DataFrame, players: p
     return pd.DataFrame(out)
 
 
+# --------------------------------------------------------------------------- appearance calibration
+
+P_BINS = (0.0, 0.2, 0.4, 0.6, 0.8, 0.9, 0.95, 1.0001)
+
+
+def appearance_calibration(result: BacktestResult) -> pd.DataFrame | None:
+    """Calibration of the hurdle model's P(appear) (``proj_p_appear``) against who actually played (ADR 0031).
+
+    One row per probability bin over projected players of every season: how many, the mean predicted probability,
+    the observed share with at least one game, and a final ``Brier`` row comparing the model with always predicting
+    the pooled base rate. ``None`` when the projector did not emit ``proj_p_appear``.
+    """
+    f = result.players
+    if "proj_p_appear" not in f.columns:
+        return None
+    d = f[f["projected"] & f["proj_p_appear"].notna()]
+    if d.empty:
+        return None
+    p, y = d["proj_p_appear"].to_numpy(float), d["played"].to_numpy(float)
+    rows = []
+    for lo, hi in zip(P_BINS[:-1], P_BINS[1:]):
+        m = (p >= lo) & (p < hi)
+        if m.any():
+            rows.append({"bin": f"{lo:.2f}-{min(hi, 1.0):.2f}", "n": int(m.sum()), "mean_pred": float(p[m].mean()),
+                         "observed": float(y[m].mean())})
+    brier, base = float(np.mean((p - y) ** 2)), float(np.mean((y.mean() - y) ** 2))
+    rows.append({"bin": "Brier (model / base rate)", "n": len(p), "mean_pred": brier, "observed": base})
+    return pd.DataFrame(rows)
+
+
+# --------------------------------------------------------------------------- season-total interval calibration
+
+def interval_coverage_table(result: BacktestResult, game_logs: pd.DataFrame, players: pd.DataFrame,
+                            nominal: float = 0.80) -> pd.DataFrame | None:
+    """Out-of-sample coverage of the season-total p10-p90 band and the games-played band, by risk group (ADR 0033).
+
+    For every projected player (zero-game players count as 0 FP / 0 GP): the share of actual season totals inside
+    ``[proj_total_fp_p10, proj_total_fp_p90]``, the share below p10 and above p90 (nominally ``(1 - nominal) / 2``
+    each), the same coverage for games played against ``[proj_gp_p10, proj_gp_p90]``, and the mean band width. The
+    games band is closed at both ends because games played is a whole number. ``None`` when the projector emits no
+    season-total band.
+    """
+    if "proj_total_fp_p10" not in result.players.columns:
+        return None
+    slen = _season_len(game_logs)
+    parts = []
+    for s in result.seasons:
+        f = result.season_frame(s)
+        f = f[f["projected"] & f["proj_total_fp_p10"].notna()].copy()
+        f["group"] = assign_risk_groups(f, s, game_logs, players, slen)
+        parts.append(f)
+    d = pd.concat(parts, ignore_index=True)
+    rows = []
+    for name, x in [("all projected players", d)] + [(g, d[d["group"] == g]) for g in RISK_GROUPS]:
+        if x.empty:
+            continue
+        a, lo, hi = (x[c].to_numpy(float) for c in ("actual_total_fp", "proj_total_fp_p10", "proj_total_fp_p90"))
+        r = {"group": name, "n": len(x), "total in band": float(np.mean((a >= lo) & (a <= hi))),
+             "below p10": float(np.mean(a < lo)), "above p90": float(np.mean(a > hi)),
+             "mean width (FP)": float(np.mean(hi - lo))}
+        if "proj_gp_p10" in x.columns:
+            g, glo, ghi = (x[c].to_numpy(float) for c in ("actual_gp", "proj_gp_p10", "proj_gp_p90"))
+            r["GP in band"] = float(np.mean((g >= np.floor(glo)) & (g <= np.ceil(ghi))))
+        rows.append(r)
+    return pd.DataFrame(rows)
+
+
 # --------------------------------------------------------------------------- leave-one-season-out
 
 def loso_table(season_metrics: pd.DataFrame, metrics: Sequence[str]) -> pd.DataFrame:
@@ -253,6 +368,21 @@ def method_checks_markdown(model: BacktestResult, tables: dict, adp: pd.DataFram
           "injury.", "",
           df_to_markdown(risk_group_table(model, tables["game_logs"], tables["players"]),
                          formats={"appear": "{:.1%}", "n": "{:.0f}"}, index=False), ""]
+    cal = appearance_calibration(model)
+    if cal is not None:
+        md += ["### Appearance (hurdle) calibration", "",
+               "`proj_p_appear` is the modelled chance a projected player plays at least one game; `observed` is how "
+               "often that happened (zero-game players are in the frame). The last row compares Brier scores "
+               "(model in `mean_pred`, always-the-base-rate in `observed`; lower is better).", "",
+               df_to_markdown(cal, formats={"n": "{:.0f}", "mean_pred": "{:.3f}", "observed": "{:.3f}"}, index=False), ""]
+    cov = interval_coverage_table(model, tables["game_logs"], tables["players"])
+    if cov is not None:
+        md += ["### Season-total interval coverage (ADR 0033)", "",
+               "Out-of-sample share of realised season totals inside the modelled p10-p90 band (nominal 80%, 10% below, "
+               "10% above), by risk group, with the games-played band alongside. Zero-game players are included.", "",
+               df_to_markdown(cov, formats={"n": "{:.0f}", "total in band": "{:.1%}", "below p10": "{:.1%}",
+                                            "above p90": "{:.1%}", "GP in band": "{:.1%}", "mean width (FP)": "{:.0f}"},
+                              index=False), ""]
     names = [m for m in ("spearman_total_fp", "top12_hit", "top50_hit", "mae_total_fp", "mae_gp")
              if m in model.season_metrics]
     md += ["### Leave-one-season-out sensitivity", "",
@@ -271,5 +401,10 @@ def method_checks_markdown(model: BacktestResult, tables: dict, adp: pd.DataFram
                "over seasons):", "", df_to_markdown(tiers, index=False), "", "Verdict at each depth:", "",
                *[f"- {v}" for v in tier_verdict(tiers)], "",
                "Season total FP error by ADP rank band (mean abs error, lower is better):", "",
-               df_to_markdown(adp_tier_error(arms), index=False, floatfmt="{:.0f}"), ""]
+               df_to_markdown(adp_tier_error(arms), index=False, floatfmt="{:.0f}"), "",
+               "### Board blend vs the model it blends (whole projected universe, ADR 0032)", "",
+               "ADP-listed players get the regression blend, everyone else keeps the model total; fit on earlier seasons "
+               "only. `blend - model` is paired over seasons (positive = blend better for Spearman and hit rates; "
+               "negative = blend better for MAE).", "",
+               df_to_markdown(blend_universe_table(model, adp), index=False), ""]
     return "\n".join(md)

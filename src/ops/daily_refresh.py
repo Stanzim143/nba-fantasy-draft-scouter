@@ -82,7 +82,7 @@ class Settings:
     timeouts: dict[str, float] = field(default_factory=lambda: dict(DEFAULT_TIMEOUTS))
     stale_hours: float = 36.0
     alert_after: int = 2
-    board_models: tuple[str, ...] = ("baseline", "auto", "baseline_offseason_debut")
+    board_models: tuple[str, ...] = ("baseline", "auto", "baseline_offseason_debut", "baseline_hurdle_adp_offseason_debut")
     steps: tuple[str, ...] = STEP_ORDER
 
     @property
@@ -888,7 +888,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--budget-minutes", type=float, default=45.0, help="whole-run time budget")
     p.add_argument("--stale-hours", type=float, default=36.0, help="alert when data is older than this")
     p.add_argument("--alert-after", type=int, default=2, help="alert after this many consecutive failing runs")
-    p.add_argument("--board-models", default="baseline,auto,baseline_offseason_debut", help="projectors for the draft-board CSVs; 'auto' = the watchlist's model; the *_debut board is the one with the debutants and undrafted signees")
+    p.add_argument("--board-models", default="baseline,auto,baseline_offseason_debut,baseline_hurdle_adp_offseason_debut", help="projectors for the draft-board CSVs; 'auto' = the watchlist's model; the *_debut boards carry the debutants and undrafted signees, and baseline_hurdle_adp_offseason_debut is the best measured model (ADR 0031/0032)")
     p.add_argument("--quiet", action="store_true", help="console shows warnings only (the log file always has everything)")
     p.add_argument("--worker", choices=sorted(WORKERS), default=None, help=argparse.SUPPRESS)
     p.add_argument("--result-file", default=None, help=argparse.SUPPRESS)

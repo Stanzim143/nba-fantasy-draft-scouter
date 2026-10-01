@@ -45,8 +45,8 @@ from src.ops.runlock import LockBusy, RunLock
 
 LOGGER = logging.getLogger("nightly")
 REPO_ROOT = dr.REPO_ROOT
-STEP_ORDER = ("games", "roster", "adp", "status", "snapshot", "league", "schedule", "analysis")
-DEFAULT_TIMEOUTS = {"games": 900, "roster": 300, "adp": 300, "status": 60, "snapshot": 60, "league": 180, "schedule": 120, "analysis": 900}
+STEP_ORDER = ("games", "injuries", "roster", "adp", "status", "snapshot", "league", "schedule", "analysis")
+DEFAULT_TIMEOUTS = {"games": 900, "injuries": 300, "roster": 300, "adp": 300, "status": 60, "snapshot": 60, "league": 180, "schedule": 120, "analysis": 900}
 OPENING_NIGHTS = {"2026-27": date(2026, 10, 20)}   # used only until the schedule table can say (user, 2026-09-25)
 FALLBACK_FANTASY_DAYS = 167                        # the league's finalScoringPeriod (one scoring period per day)
 GRACE_DAYS = 2                                     # the last games of the final day are ingested by a run after it
@@ -302,6 +302,24 @@ def worker_games(a: argparse.Namespace) -> tuple[dict, dict]:
     return summary, {"games": summary}
 
 
+def worker_injuries(a: argparse.Namespace) -> tuple[dict, dict]:
+    """Archive the league's official injury reports for the season's game dates not yet fetched (ADR 0033).
+
+    Labelled absences (injury vs rest vs G League vs personal) exist only in these reports and cannot be rebuilt later, so the
+    nightly job keeps the table current. Polite (one request per 1.5 s, at most 60 per night), incremental (only this run's new
+    days are parsed) and quiet when nothing new is published yet.
+    """
+    from src.ingest import nba_injury_reports as ir
+
+    r = ir.ingest(a.data_dir, seasons=[a.season], until=date.fromisoformat(a.through), max_requests=60,
+                  offline=bool(a.offline))
+    summary = {"requests": r.requests, "dates": r.n_dates, "fetched": r.n_fetched, "absent": r.n_absent, "pending": r.n_pending,
+               "rows": r.n_rows, "unmatched_players": len(r.unmatched_names), "parse_problems": len(r.parse_failures)}
+    if r.parse_failures:
+        raise StepError("; ".join(r.parse_failures[:3]))
+    return summary, {"injury_reports": summary}
+
+
 def worker_schedule(a: argparse.Namespace) -> tuple[dict, dict]:
     import shutil
 
@@ -378,7 +396,7 @@ def worker_analysis(a: argparse.Namespace) -> tuple[dict, dict]:
     return dr._clean(summary), {**state, "_degraded": degraded}
 
 
-WORKERS = {"games": worker_games, "roster": dr.worker_roster, "adp": dr.worker_adp, "status": dr.worker_status,
+WORKERS = {"games": worker_games, "injuries": worker_injuries, "roster": dr.worker_roster, "adp": dr.worker_adp, "status": dr.worker_status,
            "league": worker_league, "schedule": worker_schedule, "analysis": worker_analysis}
 
 

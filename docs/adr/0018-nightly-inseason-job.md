@@ -136,3 +136,9 @@ built the in-season tools but nothing runs them. Opening night is 2026-10-20 and
   `./dev schedule status --job nightly` is the check for a task that stopped firing.
 * Not built: any write to ESPN (the client is read-only, ADR 0008); auto-executed adds or trades. NBA Cup knockout games (`006` ids) are
   not in `game_logs` (nor in any earlier season); whether ESPN counts them for fantasy is unknown.
+
+## Addendum 2026-10-01
+
+An `injuries` step (after `games`) was added to the nightly job by [ADR 0033](0033-season-intervals-and-injury-labels.md): it archives the league's
+official injury reports for the season's game dates not yet fetched (at most 60 requests a night, incremental parse). The 300 s step timeout and
+the step list in this ADR otherwise stand; the first real run is, like the rest of the job, opening night.

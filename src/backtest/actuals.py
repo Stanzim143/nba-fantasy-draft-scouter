@@ -32,6 +32,11 @@ ACTUAL_COLUMNS = ["season", "player_id", "player_name", "team_id", "n_teams",
 PRED_COLUMNS = ["proj_gp", "proj_mpg", "proj_fppg", "proj_total_fp",
                 "fppg_p10", "fppg_p50", "fppg_p90"]
 
+# Extra projection columns some models emit (ADR 0031/0033): carried into the eval frame when present so the
+# appearance and season-interval checks can score them. They are never required.
+OPTIONAL_PRED_COLUMNS = ["proj_p_appear", "proj_gp_p10", "proj_gp_p90", "proj_gp_sd",
+                         "proj_total_fp_p10", "proj_total_fp_p50", "proj_total_fp_p90"]
+
 
 def _season_rows(game_logs: pd.DataFrame, season: str) -> pd.DataFrame:
     season_start(season)  # validates the format
@@ -126,7 +131,8 @@ def build_eval_frame(
             if c == "proj_total_fp":
                 continue
             proj[c] = np.nan
-    proj = proj[["player_id", "player_name"] + PRED_COLUMNS]
+    keep = PRED_COLUMNS + ([] if rank_only else [c for c in OPTIONAL_PRED_COLUMNS if c in proj.columns])
+    proj = proj[["player_id", "player_name"] + keep]
     proj["projected"] = True
 
     act = actuals[["player_id", "player_name", "team_id", "n_teams", "gp", "minutes", "mpg", "total_fp", "fppg"]].rename(

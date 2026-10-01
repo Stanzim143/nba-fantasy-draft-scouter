@@ -21,6 +21,13 @@ class BaselineConfig:
     availability_decay: float = 0.6                   # recency weight on games-played fraction
     availability_C: float = 1.0                       # inverse L2 strength of the availability logit
     availability_min_rows: int = 60                   # rows to fit the availability model
+    # Hurdle stage of availability (ADR 0031): P(player appears at all) x conditional games played. Off by default so
+    # `baseline` stays bit-identical; `baseline_hurdle` turns it on.
+    appearance_hurdle: bool = False
+    appearance_C: float = 1.0                         # inverse L2 strength of the appearance logit
+    appearance_min_rows: int = 100                    # historical (player, season) rows needed to fit it
+    # Season-total intervals (ADR 0033): adds proj_total_fp_p10/p50/p90 columns; every existing column is unchanged.
+    season_intervals: bool = False
     min_rookie_rows: int = 20                         # historical rookies needed for the draft-slot prior
     active_seasons: int = 2                           # player must have played in one of this many latest seasons
     vol_min_games: int = 10                           # games for a season's FP std to inform volatility

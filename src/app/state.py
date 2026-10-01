@@ -323,7 +323,9 @@ BOARD_COLUMNS = ["rank", "name", "position", "tier", "proj_fppg", "proj_gp", "pr
 
 def display_columns(board: pd.DataFrame) -> list[str]:
     """The board's display columns, with ADP (and the model-vs-market gap) after the projection when the board has it."""
-    extra = [c for c in ("adp", "adp_gap") if c in board.columns]
+    extra = [c for c in ("adp", "adp_gap", "blend_rank") if c in board.columns]     # ADR 0032: ADP-anchored ordering beside the model's
+    # ADR 0031 / 0033: chance of playing at all and the season-total band, only when the model emitted them
+    band = [c for c in ("proj_p_appear", "proj_total_fp_p10", "proj_total_fp_p90") if c in board.columns]
     # ADR 0016: how the projection was made and the draft-day risk overlay, only when the board carries them
     tail = [c for c in ("projection_class", "p_play", "risk_level", "risk_flags") if c in board.columns]
     # ADR 0019: display-only, unvalidated contract flag (blank = not known to be, never known not to be)
@@ -332,4 +334,4 @@ def display_columns(board: pd.DataFrame) -> list[str]:
     ret = [c for c in ("return_flag", "return_tail") if c in board.columns]   # right after vorp, visible without scrolling
     # ADR 0024: advisory short-absence flag (cause unknown; never a projection)
     ret += [c for c in ("lm_flag",) if c in board.columns]
-    return BOARD_COLUMNS[:7] + extra + BOARD_COLUMNS[7:8] + ret + BOARD_COLUMNS[8:] + tail
+    return BOARD_COLUMNS[:7] + extra + BOARD_COLUMNS[7:8] + ret + BOARD_COLUMNS[8:] + band + tail

@@ -86,6 +86,40 @@ _IDENTITY_PROJECTION: dict[str, Entry] = {
         f"{CATEGORIES}#42-games-played-proj_gp",
         formula="proj_gp = mu * L  (mu = logistic(...), L = season length)",
     ),
+    "proj_p_appear": _e(
+        "Modelled chance a veteran plays at least one game this season (the hurdle stage). Blank on boards built "
+        "without the hurdle model; 1.0 for rookies and debutants.",
+        "A logistic model over the same games-missed history (plus ADP and labelled-injury features when the "
+        "model has them) of whether an eligible player has any game in a season. proj_gp is this times the "
+        "conditional games-played mean, so a returner from a long injury who appears only ~40% of the time is "
+        "no longer projected as if he were certain to play. Calibrated out of sample (backtest report, "
+        "'Appearance (hurdle) calibration').",
+        f"{CATEGORIES}#42-games-played-proj_gp",
+        formula="proj_gp = proj_p_appear * mu * L",
+    ),
+    "proj_total_fp_p10": _e(
+        "Floor of the season total: 10th percentile of proj_fppg x games played, with the chance of not playing and "
+        "the error in the season-average projection both included. Blank without the hurdle model.",
+        "Unlike fppg_p10 (one game), this is a season outcome: games played is 0 with probability 1 - p_appear, "
+        "else a scaled Beta; the season-mean FPPG misses the projection by a fitted relative spread (by seasons of "
+        "history) plus game noise. Checked out of sample by risk group (backtest report, 'Season-total interval "
+        "coverage'); returners are covered conservatively.",
+        f"{CATEGORIES}#44-season-total-band-proj_total_fp_p10-proj_total_fp_p50-proj_total_fp_p90",
+        formula="p10 of (season-mean FPPG x games played), simulated",
+    ),
+    "proj_total_fp_p50": _e(
+        "Median season total. Lower than proj_total_fp for anyone with a real chance of missing the year.",
+        "The middle of the same simulation as proj_total_fp_p10; proj_total_fp is the mean, which includes the "
+        "zero-games outcomes and the long right tail.",
+        f"{CATEGORIES}#44-season-total-band-proj_total_fp_p10-proj_total_fp_p50-proj_total_fp_p90",
+        formula="p50 of (season-mean FPPG x games played), simulated",
+    ),
+    "proj_total_fp_p90": _e(
+        "Ceiling of the season total: 90th percentile of proj_fppg x games played.",
+        "The upper end of the same simulation; a healthy full-season outcome with a strong season-average.",
+        f"{CATEGORIES}#44-season-total-band-proj_total_fp_p10-proj_total_fp_p50-proj_total_fp_p90",
+        formula="p90 of (season-mean FPPG x games played), simulated",
+    ),
     "proj_total_fp": _e(
         "Projected total fantasy points for the season = proj_fppg x proj_gp. This is what rank "
         "and VORP are based on, not FPPG alone.",
@@ -199,6 +233,34 @@ _VALUE_MARKET: dict[str, Entry] = {
         "two scales are not directly interchangeable outside that range.",
         f"{CATEGORIES}#10-adp-and-adp_gap",
         formula="adp_gap = adp - rank",
+    ),
+    "blend_total_fp": _e(
+        "ADP-anchored season total: a regression of past season totals on log ADP and the model's own total, "
+        "for ADP-listed players; the model total for everyone else.",
+        "Fit on earlier completed seasons only (walk-forward projections vs what happened) and stored as "
+        "adp_blend.json. ADP beats the model at the top of the board and the model beats ADP on magnitude and depth; "
+        "this keeps both. proj_total_fp and every model column are unchanged. Blank unless an ADP blend has been fit "
+        "(python -m src.value.adp_blend fit).",
+        f"{CATEGORIES}#10-adp-and-adp_gap",
+        formula="blend_total_fp = b0 + b1*ln(ADP) + b2*ln(ADP)^2 + b3*proj_total_fp",
+    ),
+    "blend_vorp": _e(
+        "vorp recomputed on blend_total_fp, with the same replacement level and league shape.",
+        "Directly comparable with vorp; the difference between them is how much the market's view moves the value.",
+        f"{CATEGORIES}#10-adp-and-adp_gap",
+        formula="blend_vorp = blend_total_fp - repl_total (recomputed)",
+    ),
+    "blend_rank": _e(
+        "Position in the blend_vorp ordering, 1 = best. The ADP-anchored alternative to rank.",
+        "Sorted by blend_vorp descending, ties by blend_total_fp then player_id. Use it next to rank and adp: where "
+        "they agree the pick is safe, where they differ the model and the market disagree.",
+        f"{CATEGORIES}#10-adp-and-adp_gap",
+        formula="sort by blend_vorp desc, then blend_total_fp desc, then player_id asc",
+    ),
+    "blend_tier": _e(
+        "Value-cliff group on blend_vorp, 1 best.",
+        "The same gap-based tiering as tier, run on the blended values.",
+        f"{CATEGORIES}#10-adp-and-adp_gap",
     ),
 }
 

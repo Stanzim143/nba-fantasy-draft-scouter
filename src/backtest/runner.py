@@ -110,6 +110,12 @@ def load_run_tables(args) -> dict[str, pd.DataFrame]:
         tables["player_contracts"] = read_player_contracts()
     except (ImportError, FileNotFoundError):
         pass
+    try:   # ADR 0033: labelled absences from the NBA injury reports, sliced by History.until like every other extra
+        from src.ingest.nba_injury_reports import read_injury_reports
+
+        tables["injury_reports"] = read_injury_reports()
+    except (ImportError, FileNotFoundError):
+        pass
     return tables
 
 

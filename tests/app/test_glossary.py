@@ -21,6 +21,7 @@ from src.app.state import (
 )
 from src.app.txn_view import DISPLAY_COLUMNS as TXN_DISPLAY_COLUMNS
 from src.app.coach_view import TABLE_COLUMNS as COACH_TABLE_COLUMNS
+from src.value.adp_blend import BLEND_COLUMNS
 from src.value.board import BASE_COLUMNS, CARRIED
 from src.value.breakouts import WATCH_COLUMNS
 from src.value.contract_flags import FLAG_COLUMNS as CONTRACT_COLUMNS
@@ -44,7 +45,7 @@ PAGE = Path(__file__).resolve().parents[2] / "src" / "app" / "draft_board.py"
 # --------------------------------------------------------------------------------------------
 
 def _every_possible_board_column() -> set[str]:
-    cols = set(BASE_COLUMNS) | set(CARRIED) | {"adp", "adp_gap"}
+    cols = set(BASE_COLUMNS) | set(CARRIED) | {"adp", "adp_gap"} | set(BLEND_COLUMNS)
     cols |= set(RISK_COLUMNS)
     cols |= set(RETURN_COLUMNS) | {RETURN_VALIDATION_COLUMN}
     cols |= set(LM_COLUMNS) | {LM_VALIDATION_COLUMN}
@@ -89,6 +90,7 @@ def test_display_columns_output_is_fully_covered_for_boards_with_every_overlay()
         "vorp", "vorp_per_game", "fppg_p10", "fppg_p50", "fppg_p90", "tier",
         "adp", "adp_gap", "projection_class", "p_play", "risk_level", "risk_flags",
         "contract_flag", "return_flag", "return_tail", "lm_flag",
+        "blend_rank", "proj_p_appear", "proj_total_fp_p10", "proj_total_fp_p90",
     ]})
     cols = display_columns(board)
     missing = [c for c in cols if c not in G.COLUMN_GLOSSARY]

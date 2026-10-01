@@ -176,7 +176,16 @@ proj_gp_sd = L * sqrt(phi * mu * (1 - mu));   proj_gp_p10 / proj_gp_p90 = L * Be
 `proj_gp_p10 = 35.8`, `proj_gp_p90 = 81.1`. His 63 games reflects a recency-weighted history of missed games and age 31.6, not a claim that he will sit 19.
 
 Limitation (stated in the module docstring): `mu` is *conditional on the player being active in the target season*; a retirement or a season-ending injury
-before opening night is not in `proj_gp`. That risk belongs to the risk overlay (section 11), which is advisory.
+before opening night is not in `proj_gp` of the plain `baseline`. That risk belongs to the risk overlay (section 11), which is advisory.
+
+**The hurdle stage (ADR 0031; `baseline_hurdle*` models, `src/models/appearance.py`).** The conditional model above is only half of the story, so the hurdle models add the
+missing first stage: `proj_p_appear`, the probability that a veteran plays at least one game. It is a logistic model over `[f_bar, f_last, f_min, absent, age, age^2, mpg]`
+plus how many of the last four seasons he played and how long ago the last one was (and, in the ADP / labelled-injury models, those extra columns), trained on every
+historical (eligible player, season) row (eligible = played in one of the two previous seasons, the same rule the target season uses) labelled by whether the player has
+any game that season. Then `proj_gp = proj_p_appear * mu * L`, games played is `0` with probability `1 - proj_p_appear` and `L * Beta(mu*nu, (1-mu)*nu)` otherwise, and
+`proj_gp_sd` / `proj_gp_p10` / `proj_gp_p90` are the moments and quantiles of that mixture (`gp_mixture`; a player with more than a 10% chance of not playing has a zero floor).
+Rookies and debutants keep their draft-slot prior (`proj_p_appear = 1`). Real ten-season result (backtest, walk-forward): returners' games-played bias `+15.3` to `+1.5`, total-FP
+bias `+134` to `+14`, MAE of total FP `422.5` to `367.5`, Spearman `0.784` to `0.810` (10 of 10 seasons); P(appear) is calibrated out of sample (Brier `0.113` vs `0.209` for the base rate).
 
 ### 4.3 Total: `proj_total_fp`
 
@@ -186,6 +195,17 @@ proj_total_fp = proj_fppg * proj_gp                     baseline.py:219
 
 Jokic: `57.988 * 63.258 = 3668.2`. This is the number the rank is built on (section 8), so a 57-FPPG player who is expected to miss a quarter of the season can rank
 below a 50-FPPG player who plays 78 games.
+
+### 4.4 Season-total band: `proj_total_fp_p10`, `proj_total_fp_p50`, `proj_total_fp_p90`
+
+`fppg_p10/p90` (section 5) are quantiles of one *game*. A season total is `T = Fbar * G` (season-mean FPPG over the games played, times games played), and its spread has
+three sources, all modelled (ADR 0033, `src/models/season_interval.py`): games played `G` from the hurdle mixture of 4.2; talent misprojection, a fitted relative spread `tau`
+of `(actual season FPPG - projected) / projected` by seasons of history (0, 1, 2, 3+; game noise `sd_game^2 / gp` is subtracted so it is not counted twice; floor 2%); and the
+game noise of the average itself, `sd_game / sqrt(G)`. The columns are the 10th / 50th / 90th percentiles of a deterministic simulation of `Fbar * G` (1000 draws per player, a fixed
+seed per player id, so a projection never changes when another player is added). `proj_total_fp` is the *mean* and sits above the median for anyone with a real chance of missing the
+year. `Fbar` and `G` are treated as independent. Calibrated out of sample by risk group in the backtest report ('Season-total interval coverage'): overall 85% of realised totals fall
+inside the nominal 80% band (5.5% below p10, 9.2% above p90); prime players 82%, returners 90% (conservative), rookies 68% (the rookie path has no appearance stage, so the band is
+too narrow for them).
 
 ## 5. The floor / median / ceiling band
 
@@ -348,6 +368,13 @@ adp_gap = adp - rank                            board.py:100
 **Positive: the model ranks him earlier than the market drafts him (a value pick).** **Negative: the market pays more than the model** (a reach, or a player the model
 distrusts). Examples: Tyrese Maxey `adp 12.63`, `rank 5`, `adp_gap = +7.63`; Jayson Tatum `adp 9.68`, `rank 53`, `adp_gap = -43.32` (the market treats him as a top-10 pick, the model,
 which expects 50.1 games after his long 2025-26 absence, does not; section 12); Jabari Smith Jr. `+82.9`.
+
+**ADP as a model input and the board blend (ADR 0032).** The market prices injury news faster than game logs can, so `baseline_adp` / `baseline_hurdle_adp` feed ADP (`[covered, listed,
+ln ADP - 4]`, `src/features/adp.py`; the target season's own ADP is preseason information and is used, later seasons never) into the availability and appearance models and, through a
+fitted ridge, into minutes per game. Separately, ADR 0030 found ADP beats the model at the top of the board while the model beats ADP on magnitude and depth, so the board can carry
+`blend_total_fp`, `blend_vorp`, `blend_rank`, `blend_tier`: for ADP-listed players a regression of past season totals on `ln ADP`, `ln ADP^2` and the model's own total (fit on earlier
+completed seasons only, stored as `adp_blend.json`, `python -m src.value.adp_blend fit`), for everyone else the model total, then the ordinary VORP machinery on those totals. `rank`, `vorp` and
+every model column are unchanged; `blend_rank` is an alternative ordering to read beside `rank` and `adp`.
 
 Limitations, important:
 - **Coverage.** ESPN's feed is capped (the ingest pulls the top 600 by ownership but the "no ADP" sentinel is 140.0, ADR 0007 D2). On 2026-09-26 only 202 ADP rows exist, 198 matched to the
@@ -691,6 +718,8 @@ ad hoc — this document remains the deep reference.
 | `vorp` | `proj_total_fp` minus replacement total | 8 |
 | `vorp_per_game` | `proj_fppg` minus replacement FPPG | 8 |
 | `fppg_p10`, `fppg_p50`, `fppg_p90` | floor, median, ceiling of a single game's FP | 5 |
+| `proj_p_appear` | chance a veteran plays at least one game (hurdle models only; 1.0 for rookies and debutants) | 4.2 |
+| `proj_total_fp_p10`, `proj_total_fp_p50`, `proj_total_fp_p90` | floor, median, ceiling of the season total (hurdle models only) | 4.4 |
 | `tier` | value-cliff group, 1 best, last = at or below replacement | 9 |
 | `is_rookie` | current draft class | 6 |
 | `confidence` | `low` / `medium` / `high` from the data weight | 6 |
@@ -698,7 +727,7 @@ ad hoc — this document remains the deep reference.
 | `p_play` | chance a debutant plays at all (stash fixed 0.90) | 6 |
 
 Projection-table extras (not on the board CSV): `proj_mpg`, `proj_pts, proj_reb, proj_ast, proj_stl, proj_blk, proj_tov, proj_fgm, proj_fga, proj_ftm, proj_fta, proj_fg3m` (per-game stat block),
-`proj_fppg_sd` (sd used for the band), `proj_gp_sd`, `proj_gp_p10`, `proj_gp_p90`, `n_hist_seasons` (seasons of history behind the projection), `offseason_adj`, `offseason_factor`, `offseason_enabled`,
+`proj_fppg_sd` (sd used for the band), `proj_gp_sd`, `proj_gp_p10`, `proj_gp_p90` (games-played moments; a mixture with a point mass at zero in the hurdle models), `n_hist_seasons` (seasons of history behind the projection), `offseason_adj`, `offseason_factor`, `offseason_enabled`,
 `sl_gp, sl_mpg, sl_fp36, sl_z, pre_gp, pre_mpg, pre_fp36, pre_z` (Summer League and preseason lines), `model`, `season`.
 
 ### Board: market and overlays
@@ -707,6 +736,7 @@ Projection-table extras (not on the board CSV): `proj_mpg`, `proj_pts, proj_reb,
 |---|---|---|
 | `adp` | ESPN average draft position | 10 |
 | `adp_gap` | `adp - rank`; positive = model likes him more than the market | 10 |
+| `blend_total_fp`, `blend_vorp`, `blend_rank`, `blend_tier` | the ADP-anchored season total and the VORP, rank and tier computed on it (only when an ADP blend is fit) | 10 |
 | `risk_level` | `""`, `watch`, `high` | 11 |
 | `risk_flags` | readable flag text (ESPN status, preseason games, new team, star arrived / left, and the return sentence) | 11, 12 |
 | `risk_gp_haircut` | advisory share of games at risk, 0 to 0.20 | 11 |

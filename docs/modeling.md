@@ -84,6 +84,26 @@ proj_gp_p10, proj_gp_p90 = L x Beta quantiles
 `proj_gp <= L` always. `mu` is conditional on the player being active in the target season.
 With too few training rows the model falls back to half own recent rate, half league mean.
 
+### 4a. The hurdle stage (`src/models/appearance.py`, ADR 0031; `baseline_hurdle*`)
+
+The plain model above never sees a season with zero games. The hurdle models add `P(appear)`, a logistic regression over the same features plus seasons played of the last
+four and seasons since the last game (and any `extra` columns the projector supplies), trained on every historical (eligible player, season) row, eligible meaning played in one of
+the two previous seasons, labelled by whether the player has any game that season. Then
+
+```
+proj_gp      = P(appear) * mu * L         (P(appear) = proj_p_appear; 1.0 for rookies and debutants)
+GP ~ 0 with probability 1 - P(appear), else L * Beta(mu nu, (1 - mu) nu);  proj_gp_sd, proj_gp_p10, proj_gp_p90 are that mixture's moments and quantiles
+```
+
+`BaselineConfig.appearance_hurdle` (default False) switches it on, so `baseline` is bit-identical. `proj_total_fp = proj_fppg * proj_gp` still holds, so the board rank is the expected
+season total including the chance of not playing. Result and calibration: ADR 0031.
+
+### 4b. Season-total band (`src/models/season_interval.py`, ADR 0033)
+
+`BaselineConfig.season_intervals` adds `proj_total_fp_p10/p50/p90`: a deterministic simulation (1000 draws per player, `default_rng([0, player_id])`) of `Fbar * G` with `G` from 4a and
+`Fbar ~ Normal(proj_fppg, sqrt((tau * proj_fppg)^2 + sd_game^2 / G))`, where `tau` is the relative spread of `(actual season FPPG - projection) / projection` estimated from the
+history's own player-seasons by seasons of history (game noise subtracted, floor 2%). Every other column is unchanged; coverage by risk group is in the backtest report.
+
 ## 5. Volatility, floor / median / ceiling (`src/models/volatility.py`)
 
 * `sd_prior(fppg) = a + b fppg` from a weighted regression of season game-level FP sd on FPPG.
@@ -300,6 +320,22 @@ take fixed conventions so the matrix is never NaN. `availability.py` and `baseli
 Real result (ten walk-forward seasons, pre-registered rule): lift in MAE of total FP -0.47 [-1.31, +0.29], in MAE of games -0.037
 [-0.085, +0.011] (negative = worse), Spearman -0.0012, wins 2 and 3 of 10; it raises the ADR 0021 cohort's projected games by about 8.8 (Tatum 50.1 -> 57.7 GP), which
 over-corrects a group the baseline already projected about right. **Registered and tested, not recommended.**
+
+### 10h. ADP as a preseason signal (implemented; ADR 0032) -- improves, used in the board stack
+
+`BaselineAdpProjector` (`src/models/adp_baseline.py`, `baseline_adp`; `baseline_hurdle_adp` adds the hurdle) feeds `src/features/adp.py`'s `[covered, listed, ln ADP - 4]`
+into the availability and (hurdle) appearance models and a ridge-fitted additive minutes adjustment (`actual - predicted mpg` on ADP, ADP-covered rows only) through the existing
+`_build_injury_features` / `_build_coach_features` hooks. The target season's own ADP is used (preseason information); later seasons never are (`slice_adp`, `assert_adp_no_future`);
+seasons before ADP coverage are all-zero columns, so they still train the base model. Real ten-season result over `baseline_hurdle`: Spearman +0.013 (9 of 10 seasons), MAE of total FP -14,
+MAE FPPG -0.08, VORP-weighted MAE 709 -> 658; over the plain baseline the stack `baseline_hurdle_adp` reaches Spearman 0.823 and MAE 353 (ADR 0032).
+The board's separate ADP + model *blend* (`blend_*` columns, `src/value/adp_blend.py`) is described in categories.md section 10.
+
+### 10i. Labelled injuries from the NBA injury reports (implemented; ADR 0033)
+
+`src/ingest/nba_injury_reports.py` archives the league's official injury-report PDFs (2018-12-19 on; `injury_reports`) and `src/features/injury_labels.py` turns each (player, season)
+into `inj_out`, `rest_out`, `other_out` (shares of covered team games listed Out for injury/illness/recovery, rest/injury management, and non-injury reasons such as G League or personal),
+`longest` (longest consecutive injury spell, the duration) and `n_spells`, recency-weighted over seasons that have reports, with a `covered` flag (all-zero rows for seasons
+without reports). `baseline_labels`, `baseline_hurdle_labels` and `baseline_hurdle_adp_labels` feed them to availability and appearance. Result: ADR 0033.
 
 ### 10d. Not implemented
 

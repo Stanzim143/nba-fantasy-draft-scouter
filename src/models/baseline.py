@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 
 from src.contracts import PROJECTION_STATS, STAT_COLUMN_MAP, History, season_start, validate_table
+from src.models.appearance import AppearanceModel, gp_mixture
 from src.models.availability import AvailabilityModel
 from src.models.config import BaselineConfig
 from src.models.panel import PanelData, build_panel, target_season_games
@@ -32,6 +33,7 @@ from src.models.rates import (
     MINUTES, SPECS, VOLATILITY, Frame, SpecFit, fit_spec, frame_for_target, frame_from_panel_rows, predict_rate,
 )
 from src.models.rookies import RookiePrior, fit_rookie_prior, pick_effective, to_float
+from src.models.season_interval import SeasonFppgUncertainty, simulate_total_quantiles
 from src.models.volatility import VolatilityPrior, add_ratio_columns, fit_volatility_prior, floor_median_ceiling
 from src.value.league import load_league
 from src.value.frame import fantasy_points_frame
@@ -63,6 +65,8 @@ class FittedBaseline:
     transactions_features: object = None  # src.features.transactions.TransactionFeatures, only set by a transactions-aware subclass
     coach_features: object = None  # src.features.coach.CoachFeatures, only set by a coach-aware subclass (ADR 0020)
     rookie_adjust: object = None  # callable(pids) -> (mpg_scale, games_scale, rate_scale) arrays, only set by src.models.debutants (origin option)
+    appearance: AppearanceModel | None = None  # hurdle stage of availability (ADR 0031), only set when config.appearance_hurdle
+    season_uncertainty: SeasonFppgUncertainty | None = None  # season-mean FPPG spread (ADR 0033), only set when config.season_intervals
 
     # ------------------------------------------------------------------ projection
     def active_player_ids(self) -> np.ndarray:
@@ -102,6 +106,8 @@ class FittedBaseline:
         extra = (self.injury_features.build(frame.pids, frame.target_s, frame.age)
                  if self.injury_features is not None else None)
         out["mu_f"] = self.availability.predict_mean(f_lags, frame.age, mpg, extra=extra)
+        out["p_appear"] = (self.appearance.predict(f_lags, frame.age, mpg, extra=extra) if self.appearance is not None
+                           else np.ones(len(frame.pids)))
         z, _ = predict_rate(self.volatility_fit, frame, None)
         out["z_hat"] = z
         out["n_hist_seasons"] = np.isfinite(f_lags).sum(axis=1)
@@ -143,6 +149,7 @@ class FittedBaseline:
             out[name] = np.clip(v if spec.kind == "pct" else v * rate_scale, lo, hi)
         out["data_weight"] = np.zeros(len(pids))
         out["mu_f"] = np.clip(rp.predict("f", pick, group, age), 0.02, 0.985) if mu_f is None else np.asarray(mu_f, float)
+        out["p_appear"] = np.ones(len(pids))     # the appearance stage covers veterans only (rookies keep their draft-slot prior)
         out["z_hat"] = np.ones(len(pids))
         out["n_hist_seasons"] = np.zeros(len(pids), dtype=int)
         out["is_rookie"] = np.ones(len(pids), dtype=bool)
@@ -171,6 +178,34 @@ class FittedBaseline:
         u = ((g["fp"] - g["pred"]) / g["sd"]).to_numpy(float)
         q = np.quantile(u, self.config.quantiles)
         return (float(q[0]), float(q[1]), float(q[2]))
+
+    def fit_season_uncertainty(self, train: Frame) -> SeasonFppgUncertainty:
+        """Relative spread of the season-mean FPPG miss, by seasons of history (ADR 0033).
+
+        Every historical player-season after the first is projected from its own lags (veterans via ``_core``, players
+        with no history via the draft-slot prior) and compared with the realised season mean.
+        """
+        later = train.target_s > self.panel["s"].min()
+        vet = train.has_history() & later
+        sub = train.subset(vet)
+        d = self._core(sub)
+        pred = self._fppg(d)
+        sd = d["z_hat"].to_numpy(float) * self.vol_prior.sd_prior(pred)
+        actual, gp = (self.panel[c].to_numpy(float)[vet] for c in ("fppg", "gp"))
+        n_hist = d["n_hist_seasons"].to_numpy()
+        new = ~train.has_history() & later
+        if new.any():
+            pids = train.pids[new]
+            pl = self.players.drop_duplicates("player_id").set_index("player_id").reindex(pids)
+            pick = pick_effective(pl["draft_number"].to_numpy(), pl["draft_round"].to_numpy())
+            d0 = self.prior_rows(pids, pick, self._positions(pids), train.age[new])
+            pred0 = self._fppg(d0)
+            pred = np.r_[pred, pred0]
+            sd = np.r_[sd, self.vol_prior.sd_prior(pred0)]
+            actual = np.r_[actual, self.panel["fppg"].to_numpy(float)[new]]
+            gp = np.r_[gp, self.panel["gp"].to_numpy(float)[new]]
+            n_hist = np.r_[n_hist, np.zeros(int(new.sum()), dtype=int)]
+        return SeasonFppgUncertainty.fit(pred, actual, gp, sd, n_hist)
 
     def predict(self) -> pd.DataFrame:
         parts = [self._veterans()]
@@ -206,12 +241,13 @@ class FittedBaseline:
         L = float(self.season_games)
         mpg = d["proj_mpg"].to_numpy(float)
         stats = self._stat_block(d)
+        p_appear = d["p_appear"].to_numpy(float) if "p_appear" in d.columns else np.ones(len(d))
         out = pd.DataFrame({
             "season": self.target_season,
             "player_id": d["player_id"].to_numpy("int64"),
             "player_name": self.names.reindex(d["player_id"]).to_numpy(),
             "model": "baseline",
-            "proj_gp": d["mu_f"].to_numpy(float) * L,
+            "proj_gp": d["mu_f"].to_numpy(float) * p_appear * L,
             "proj_mpg": mpg,
         })
         for col in STAT_COLUMN_MAP.values():
@@ -222,7 +258,17 @@ class FittedBaseline:
         sd = d["z_hat"].to_numpy(float) * self.vol_prior.sd_prior(out["proj_fppg"].to_numpy())
         lo, mid, hi = floor_median_ceiling(out["proj_fppg"].to_numpy(), sd, self.quantile_shape)
         out["fppg_p10"], out["fppg_p50"], out["fppg_p90"] = lo, mid, hi
-        gp_sd, gp_lo, gp_hi = self.availability.distribution(d["mu_f"].to_numpy(float), L)
+        if self.appearance is None:
+            gp_sd, gp_lo, gp_hi = self.availability.distribution(d["mu_f"].to_numpy(float), L)
+        else:
+            _, gp_sd, gp_lo, gp_hi = gp_mixture(self.availability, d["mu_f"].to_numpy(float), p_appear, L)
+            out["proj_p_appear"] = p_appear
+        if self.season_uncertainty is not None:
+            q = simulate_total_quantiles(
+                d["player_id"].to_numpy("int64"), out["proj_fppg"].to_numpy(float), d["mu_f"].to_numpy(float), p_appear,
+                L, self.availability, self.season_uncertainty.rel_tau(d["n_hist_seasons"].to_numpy()), sd,
+                quantiles=self.config.quantiles)
+            out["proj_total_fp_p10"], out["proj_total_fp_p50"], out["proj_total_fp_p90"] = q[:, 0], q[:, 1], q[:, 2]
         out["proj_fppg_sd"] = sd
         out["proj_gp_sd"] = gp_sd
         out["proj_gp_p10"], out["proj_gp_p90"] = gp_lo, gp_hi
@@ -280,6 +326,8 @@ class BaselineProjector:
             decay=cfg.availability_decay, C=cfg.availability_C, min_rows=cfg.availability_min_rows,
             extra=extra_train)
 
+        appearance = self._fit_appearance(pd_, panel, minutes, injury_features) if cfg.appearance_hurdle else None
+
         rookie_prior = fit_rookie_prior(
             panel, history.players, {n: (s.num, s.den) for n, s in SPECS.items()},
             self._replacement_prior(panel, minutes, rates), cfg.min_rookie_rows)
@@ -293,13 +341,49 @@ class BaselineProjector:
             target_start=season_start(history.target_season), season_games=season_games,
             panel=panel, panel_data=pd_, minutes=minutes, rates=rates, volatility_fit=vol_fit,
             vol_prior=vol_prior, availability=availability, rookie_prior=rookie_prior,
-            players=history.players, quantile_shape=vol_prior.q, names=names,
+            players=history.players, quantile_shape=vol_prior.q, names=names, appearance=appearance,
             injury_features=injury_features, roster_features=roster_features,
             transactions_features=transactions_features,
             coach_features=self._build_coach_features(
                 history, sub, mpg_train, panel["mpg"].to_numpy(float)[rows], panel["gp"].to_numpy(float)[rows]))
         fitted.quantile_shape = fitted.calibrate_quantiles(train)
+        if cfg.season_intervals:
+            fitted.season_uncertainty = fitted.fit_season_uncertainty(train)
         return fitted
+
+    def _fit_appearance(self, pd_: PanelData, panel: pd.DataFrame, minutes: SpecFit,
+                        injury_features: object | None = None) -> AppearanceModel:
+        """Hurdle stage (ADR 0031): P(>= 1 game) over every historical (eligible player, season).
+
+        Eligible = played in one of the ``active_seasons`` seasons before the row's season, the same rule
+        ``active_player_ids`` applies to the target season; the label is whether the player has a panel row
+        (>= 1 game) in that season. Rows are built season by season from the panel alone (no future data).
+        """
+        cfg = self.config
+        seasons = np.sort(panel["s"].unique())
+        played = panel.groupby("s")["player_id"].agg(lambda x: set(x.tolist()))
+        lags, ages, mpgs, labels, extras = [], [], [], [], []
+        for s in seasons[1:]:
+            prior = panel[(panel["s"] < s) & (panel["s"] >= s - cfg.active_seasons)]
+            pids = np.sort(prior["player_id"].unique())
+            if not len(pids):
+                continue
+            age = pd_.ages.at(pids, int(s))
+            frame = frame_for_target(panel, pids, int(s), age, np.full(len(pids), "U"), cfg)
+            mpg = np.clip(predict_rate(minutes, frame, None)[0], 0.0, cfg.mpg_max)
+            lags.append(frame.lags["f"])
+            if injury_features is not None:
+                extras.append(injury_features.build(pids, frame.target_s, frame.age))
+            ages.append(frame.age)
+            mpgs.append(mpg)
+            labels.append(np.isin(pids, list(played.get(s, set()))).astype(float))
+        if not lags:
+            return AppearanceModel.fit(np.empty((0, cfg.n_lags)), np.empty(0), np.empty(0), np.empty(0),
+                                       decay=cfg.availability_decay, C=cfg.appearance_C,
+                                       min_rows=cfg.appearance_min_rows)
+        return AppearanceModel.fit(np.vstack(lags), np.concatenate(labels), np.concatenate(ages), np.concatenate(mpgs),
+                                   decay=cfg.availability_decay, C=cfg.appearance_C, min_rows=cfg.appearance_min_rows,
+                                   extra=np.vstack(extras) if extras else None)
 
     def _build_injury_features(self, history: History, sub) -> object | None:
         """Hook for injury-aware subclasses (see ``BaselineInjuryProjector``).

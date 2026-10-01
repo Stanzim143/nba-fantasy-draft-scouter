@@ -156,8 +156,14 @@ def load_board(season: str, model: str = "baseline", *, teams: int | None = None
 
     games = target_season_games(season_lengths(history, None)) if len(history.team_games) else 82.0
     adp, adp_note = (None, "synthetic data has no ADP") if synthetic else _load_adp(season, data_dir)
+    blend = None
+    if adp is not None:
+        from src.value.board import load_blend
+
+        blend = load_blend("auto", data_dir)
     try:
-        board = build_board(proj, history.players, teams=teams, adp=adp, season_games=games, positional=positional)
+        board = build_board(proj, history.players, teams=teams, adp=adp, season_games=games, positional=positional,
+                            blend=blend)
     except (ValueError, KeyError) as e:
         raise BoardUnavailable(f"could not build the board for {season}: {e}") from e
     board.attrs["adp_note"] = adp_note

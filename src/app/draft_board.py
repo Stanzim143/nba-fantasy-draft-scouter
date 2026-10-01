@@ -193,15 +193,33 @@ def _run_live_sync(league_id: int, my_team_id: int | None, *, force: bool) -> No
             "Mark them manually below.")
 
 
+DEFAULT_REAL_MODEL = "baseline_hurdle_adp_offseason_debut"
+
+
+def _default_model() -> str:
+    """The best measured model when real data is ingested, else the plain baseline (synthetic demo, fresh clone)."""
+    try:
+        from src.contracts import data_dir
+
+        has_real = (data_dir() / "processed" / "game_logs.parquet").exists()
+    except OSError:
+        has_real = False
+    return DEFAULT_REAL_MODEL if has_real and DEFAULT_REAL_MODEL in available_projectors() else "baseline"
+
+
 def _sidebar() -> None:
     st.sidebar.header("Board")
     season = st.sidebar.text_input("Season", value=st.session_state.board_meta.get("season", "2026-27"),
                                    help="e.g. 2026-27")
+    default_model = _default_model()
     model = st.sidebar.selectbox("Model", options=available_projectors(),
                                  index=available_projectors().index(
-                                     st.session_state.board_meta.get("model", "baseline"))
-                                 if st.session_state.board_meta.get("model", "baseline") in available_projectors()
-                                 else 0)
+                                     st.session_state.board_meta.get("model", default_model))
+                                 if st.session_state.board_meta.get("model", default_model) in available_projectors()
+                                 else 0,
+                                 help=f"`{DEFAULT_REAL_MODEL}` is the best measured model on real data (hurdle availability, "
+                                      "ADP as a preseason signal, Summer League / preseason layer, debutants; ADR 0031/0032). "
+                                      "`baseline` is the plain model and the one to use with the synthetic demo.")
     teams_override = st.sidebar.number_input("Teams (0 = use league config)", min_value=0, max_value=30,
                                              value=st.session_state.board_meta.get("teams") or 0)
     positional = st.sidebar.selectbox("Positional scarcity", options=["auto", "on", "off"], index=0)

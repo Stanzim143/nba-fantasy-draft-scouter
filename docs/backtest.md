@@ -326,3 +326,8 @@ earlier seasons only, first season dropped) with top-12/24/50/100 hit and captur
 rank band. Code: `src/backtest/method_checks.py`. Results and their reading are in ADR 0030; limits in [limitations.md](limitations.md).
 `BaselineConfig.tune_with_predicted_mpg` (default True) and `use_position_priors` (registry `baseline_nopos`) are the switches behind the
 before/after and ablation numbers there.
+
+ADR 0031-0033 add three more sections to the same report, each shown only when the projector emits the columns it needs (extra, optional projection columns are carried into the eval frame
+by `actuals.OPTIONAL_PRED_COLUMNS`): **Appearance (hurdle) calibration** (`proj_p_appear` bins against who actually played, and Brier against the base rate), **Season-total interval
+coverage** (share of realised totals inside `proj_total_fp_p10..p90`, below p10 and above p90, and the games-played band, overall and by risk group), and, with `--adp-file`, **Board blend vs
+the model it blends** (`src/value/adp_blend.py`: ADP-listed players get the regression fit on earlier seasons only, everyone else keeps the model total; Spearman, top-N hit and MAE, season-paired).

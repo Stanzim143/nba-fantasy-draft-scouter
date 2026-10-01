@@ -50,7 +50,8 @@ from src.value.replacement import DEFAULT_SCARCITY_THRESHOLD, league_shape
 from src.value.tiers import assign_tiers
 from src.value.vorp import POSITIONAL_MODES, compute_vorp
 
-CARRIED = ("age", "is_rookie", "confidence", "projection_class", "p_play")
+CARRIED = ("age", "is_rookie", "confidence", "projection_class", "p_play",
+           "proj_p_appear", "proj_total_fp_p10", "proj_total_fp_p50", "proj_total_fp_p90")
 BASE_COLUMNS = ["rank", "player_id", "name", "position", "proj_fppg", "proj_gp", "proj_total_fp",
                 "vorp", "vorp_per_game", "fppg_p10", "fppg_p50", "fppg_p90", "tier"]
 
@@ -58,13 +59,15 @@ BASE_COLUMNS = ["rank", "player_id", "name", "position", "proj_fppg", "proj_gp",
 def build_board(projections: pd.DataFrame, players: pd.DataFrame | None = None, cfg: dict | None = None, *,
                 teams: int | None = None, adp: pd.DataFrame | None = None, bench_weight: float | None = None,
                 season_games: float = 82.0, positional: str = "auto",
-                scarcity_threshold: float = DEFAULT_SCARCITY_THRESHOLD, **tier_kwargs) -> pd.DataFrame:
+                scarcity_threshold: float = DEFAULT_SCARCITY_THRESHOLD, blend=None, **tier_kwargs) -> pd.DataFrame:
     """Rank ``projections`` (one model, one season) into a draft board.
 
     ``teams`` overrides ``league.teams`` from the config (13, confirmed live against the real
     ESPN league; see ADR 0008). ``adp`` needs
-    ``player_id`` and ``adp`` columns (overall pick number, 1 = first pick). Extra keyword
-    arguments go to ``assign_tiers``.
+    ``player_id`` and ``adp`` columns (overall pick number, 1 = first pick). ``blend`` (an
+    ``src.value.adp_blend.AdpBlend``, needs ``adp``) adds ``blend_total_fp / blend_vorp / blend_rank /
+    blend_tier``, an ADP-anchored second ordering (ADR 0032); every other column is unchanged. Extra
+    keyword arguments go to ``assign_tiers``.
     """
     validate_table(projections, "projections")
     if projections["model"].nunique() > 1 or projections["season"].nunique() > 1:
@@ -103,6 +106,14 @@ def build_board(projections: pd.DataFrame, players: pd.DataFrame | None = None, 
     out.attrs["replacement"] = res.replacement.as_dict()
     out.attrs["positional"] = res.positional.as_dict() if res.positional else None
     out.attrs["positional_used"] = res.positional_used
+    if blend is not None and adp is not None:
+        from src.value.adp_blend import add_blend_columns
+
+        attrs = dict(out.attrs)
+        out = add_blend_columns(out, proj, adp, blend, cfg=cfg, teams=teams, bench_weight=bench_weight,
+                                season_games=season_games, positional=positional,
+                                scarcity_threshold=scarcity_threshold, **tier_kwargs)
+        out.attrs.update(attrs)
     return out
 
 
@@ -177,6 +188,28 @@ def load_adp_for_board(path: Path, season: str, data_dir: Path | None, *, source
     return frame[["player_id", "adp"]], stats
 
 
+def load_blend(spec: str | Path | None, data_dir: Path | None):
+    """The ADP blend named by ``spec`` ('off' / None -> none; 'auto' -> the data dir's file if present; else a path).
+
+    A missing or unreadable 'auto' file is simply no blend (the board then has no ``blend_*`` columns); an explicit path
+    that cannot be read is an error, so a typo is not silently ignored.
+    """
+    from src.contracts import data_dir as default_dir
+    from src.value.adp_blend import BLEND_FILE, AdpBlend
+
+    if spec is None or str(spec) == "off":
+        return None
+    if str(spec) == "auto":
+        path = (data_dir or default_dir()) / "processed" / BLEND_FILE
+        if not path.exists():
+            return None
+        try:
+            return AdpBlend.load(path)
+        except (ValueError, TypeError, KeyError, OSError):
+            return None
+    return AdpBlend.load(Path(spec))
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m src.value.board", description=__doc__.split("\n\n")[0])
     ap.add_argument("--season", required=True, help="target season, e.g. 2026-27")
@@ -189,6 +222,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--adp-source", default="espn", help="source namespace when --adp is the raw ingested table")
     ap.add_argument("--adp-min-confidence", type=float, default=0.0,
                     help="drop player_id_map matches below this confidence when --adp is the raw ingested table")
+    ap.add_argument("--adp-blend", default="auto",
+                    help="ADP + model blend coefficients (adp_blend.json from `python -m src.value.adp_blend fit`): a path, "
+                         "'auto' (the data dir's file when it exists and --adp is given) or 'off'")
     ap.add_argument("--positional", choices=POSITIONAL_MODES, default="auto")
     ap.add_argument("--bench-weight", type=float, default=None, help="override the derived bench weight in [0, 1]")
     ap.add_argument("--data-dir", type=Path, default=None, help="data root (default: NBA_DATA_DIR / ~/dev-data)")
@@ -224,8 +260,9 @@ def main(argv: list[str] | None = None) -> int:
                         f"{adp_stats['n_low_confidence']} below confidence threshold, "
                         f"{adp_stats['n_duplicates']} duplicate picks, out of {adp_stats['n_rows']} raw rows)")
     games = target_season_games(season_lengths(history, None)) if len(history.team_games) else 82
+    blend = load_blend(args.adp_blend, args.data_dir) if adp is not None else None
     board = build_board(proj, history.players, teams=args.teams, adp=adp, bench_weight=args.bench_weight,
-                        season_games=games, positional=args.positional)
+                        season_games=games, positional=args.positional, blend=blend)
     if not args.synthetic:
         try:
             from src.value.risk import attach_risk, compute_risk, season_is_live
