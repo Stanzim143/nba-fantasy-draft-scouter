@@ -23,6 +23,29 @@ class BoardUnavailable(Exception):
     safe to show verbatim in the app."""
 
 
+def validate_data_dir_override(text: str | None) -> Path | None:
+    """Vet the app's free-text "data directory override" before any file is read from it.
+
+    Blank means "use the default" (``None``). Otherwise the path must exist, be a directory and
+    contain the ``processed/`` sub-directory of the shared data layout, so the app can never be
+    pointed at an arbitrary location (a home folder, a network share, a system directory).
+    Raises :class:`BoardUnavailable` (user-facing message) when it does not qualify."""
+    text = (text or "").strip()
+    if not text:
+        return None
+    try:
+        path = Path(text).expanduser().resolve()
+        if not path.is_dir():
+            raise BoardUnavailable(f"Data directory override {text!r} does not exist or is not a directory.")
+        if not (path / "processed").is_dir():
+            raise BoardUnavailable(
+                f"Data directory override {text!r} has no 'processed/' sub-directory; it does not look "
+                "like a data directory (see DATA.md). Leave it blank to use the default.")
+    except OSError as exc:
+        raise BoardUnavailable(f"Data directory override {text!r} is not usable: {exc}") from exc
+    return path
+
+
 def _load_history(season: str, synthetic: bool, data_dir: Path | None) -> History:
     if synthetic:
         from src.synthetic import make_synthetic_tables

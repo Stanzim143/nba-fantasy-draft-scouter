@@ -187,3 +187,19 @@ def test_load_watchlist_errors_are_user_facing(tmp_path):
         load_watchlist("2019-20", model="nope")
     with pytest.raises(BoardUnavailable, match="isn't available"):
         load_watchlist("2019-20", data_dir=tmp_path / "empty")
+
+
+def test_data_dir_override_blank_is_default_and_bad_paths_are_rejected(tmp_path):
+    from src.app.loader import validate_data_dir_override
+
+    assert validate_data_dir_override("") is None
+    assert validate_data_dir_override("   ") is None
+    with pytest.raises(BoardUnavailable, match="does not exist"):
+        validate_data_dir_override(str(tmp_path / "missing"))
+    (tmp_path / "f.txt").write_text("x")
+    with pytest.raises(BoardUnavailable, match="not a directory"):
+        validate_data_dir_override(str(tmp_path / "f.txt"))
+    with pytest.raises(BoardUnavailable, match="processed"):
+        validate_data_dir_override(str(tmp_path))  # exists, but not a data directory
+    (tmp_path / "processed").mkdir()
+    assert validate_data_dir_override(str(tmp_path)) == tmp_path.resolve()

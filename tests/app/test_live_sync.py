@@ -284,8 +284,10 @@ def test_sync_once_happy_path_detects_new_picks(tmp_path):
 def test_sync_once_repeated_call_with_updated_seen_finds_nothing_new(tmp_path):
     payload = draft_payload([pick(1, 5, 9999)])
     client, session = make_client(tmp_path, [FakeResponse(200, payload), FakeResponse(200, payload)])
-    first = ls.sync_once(client, 1, 2027, seen_overall_picks=frozenset(), my_team_id=None)
-    second = ls.sync_once(client, 1, 2027, seen_overall_picks=first.seen_overall_picks, my_team_id=None)
+    ids = {"9999": 42}
+    first = ls.sync_once(client, 1, 2027, seen_overall_picks=frozenset(), my_team_id=None, id_map=ids)
+    second = ls.sync_once(client, 1, 2027, seen_overall_picks=first.seen_overall_picks, my_team_id=None,
+                          id_map=ids)
     assert len(first.detected) == 1
     assert len(second.detected) == 0
 
@@ -301,8 +303,10 @@ def test_sync_once_always_bypasses_the_on_disk_cache(tmp_path):
     payload_1 = draft_payload([pick(1, 5, 9999)])
     payload_2 = draft_payload([pick(1, 5, 9999), pick(2, 6, 8888)])
     client, session = make_client(tmp_path, [FakeResponse(200, payload_1), FakeResponse(200, payload_2)])
-    first = ls.sync_once(client, 1, 2027, seen_overall_picks=frozenset(), my_team_id=None)
-    second = ls.sync_once(client, 1, 2027, seen_overall_picks=first.seen_overall_picks, my_team_id=None)
+    ids = {"9999": 42, "8888": 43}
+    first = ls.sync_once(client, 1, 2027, seen_overall_picks=frozenset(), my_team_id=None, id_map=ids)
+    second = ls.sync_once(client, 1, 2027, seen_overall_picks=first.seen_overall_picks, my_team_id=None,
+                          id_map=ids)
     assert len(session.calls) == 2, "the second poll was served from the on-disk cache, not re-fetched"
     assert len(first.detected) == 1
     assert [p.overall_pick for p in second.detected] == [2]  # the newly-appeared pick 2, not pick 1 again
@@ -325,6 +329,42 @@ def test_sync_once_never_raises_on_5xx_exhausted_retries(tmp_path):
     result = ls.sync_once(client, 1, 2027, seen_overall_picks=frozenset(), my_team_id=None)
     assert result.ok is False
     assert result.error
+
+
+def test_sync_once_unresolved_picks_are_retried_until_the_id_map_knows_them(tmp_path):
+    payload = draft_payload([pick(1, 5, 9999), pick(2, 6, 8888)])
+    client, _ = make_client(tmp_path, [FakeResponse(200, payload), FakeResponse(200, payload)])
+    first = ls.sync_once(client, 1, 2027, seen_overall_picks=frozenset(), my_team_id=None,
+                         id_map={"9999": 42})
+    assert first.seen_overall_picks == frozenset({1})  # pick 2 unresolved: not marked seen
+    second = ls.sync_once(client, 1, 2027, seen_overall_picks=first.seen_overall_picks, my_team_id=None,
+                          id_map={"9999": 42, "8888": 43})
+    assert [d.overall_pick for d in second.detected] == [2]
+    assert second.detected[0].player_id == 43
+    assert second.seen_overall_picks == frozenset({1, 2})
+
+
+def test_sync_once_never_raises_on_unexpected_errors(tmp_path, monkeypatch):
+    client, _ = make_client(tmp_path, [FakeResponse(200, draft_payload([pick(1, 5, 9999)]))] * 4)
+    seen = frozenset({7})
+    for target in ("fetch_draft_detail", "parse_draft", "build_detected_picks"):
+        monkeypatch.setattr(ls, target, lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+        result = ls.sync_once(client, 1, 2027, seen_overall_picks=seen, my_team_id=None)
+        assert result.ok is False and "boom" in result.error
+        assert result.seen_overall_picks == seen
+        monkeypatch.undo()
+
+
+def test_sync_once_lock_failure_is_an_error_result_not_a_crash(tmp_path, monkeypatch):
+    def bad_lock(path):
+        raise OSError("disk gone")
+
+    monkeypatch.setattr(ls, "poll_lock", bad_lock)
+    client, session = make_client(tmp_path, [FakeResponse(200, draft_payload([]))])
+    result = ls.sync_once(client, 1, 2027, seen_overall_picks=frozenset(), my_team_id=None,
+                          lock_path=tmp_path / "x.lock")
+    assert result.ok is False and "disk gone" in result.error
+    assert session.calls == []
 
 
 # --------------------------------------------------------------------------- load_id_map

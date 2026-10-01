@@ -275,8 +275,8 @@ def sync_once(client: ESPNLeagueClient, league_id: int, season_id: int, *,
              lock_path: Path | None = None) -> SyncResult:
     """Fetch the current draft state and return the picks new since ``seen_overall_picks``.
 
-    Never raises: every ``ESPNLeagueError`` (auth, not-found, offline-cache-miss, rate-limited/
-    retries exhausted, ...) is caught and turned into ``SyncResult(ok=False, error=...)`` so a
+    Never raises: every exception (``ESPNLeagueError`` -- auth, not-found, offline-cache-miss,
+    rate-limited/retries exhausted -- but also lock, parse or resolve failures) is caught and turned into ``SyncResult(ok=False, error=...)`` so a
     caller can show the error in the status indicator and keep drafting with the manual control.
     When ``lock_path`` is given, the fetch is wrapped in :func:`poll_lock`; another session already
     holding it produces ``SyncResult(ok=True, locked_out=True)`` (a benign skip, not an error --
@@ -284,10 +284,19 @@ def sync_once(client: ESPNLeagueClient, league_id: int, season_id: int, *,
     or counting as a failure.
     """
     fetched_at = now or datetime.now(timezone.utc)
-    lock = poll_lock(lock_path) if lock_path is not None else None
+
+    def _fail(exc: Exception) -> SyncResult:
+        msg = str(exc) if isinstance(exc, ESPNLeagueError) else f"{type(exc).__name__}: {exc}"
+        return SyncResult(ok=False, fetched_at=fetched_at, error=msg,
+                          seen_overall_picks=seen_overall_picks)
+
+    lock = None
+    acquired = False
     try:
-        if lock is not None:
+        if lock_path is not None:
+            lock = poll_lock(lock_path)
             lock.acquire()
+            acquired = True
         # refresh=True: a live poll must never be served the *first* poll's cached snapshot
         # forever (ESPNLeagueClient otherwise caches a request's response on disk indefinitely --
         # see fetch_draft_detail's docstring).
@@ -295,19 +304,27 @@ def sync_once(client: ESPNLeagueClient, league_id: int, season_id: int, *,
     except LockBusy:
         return SyncResult(ok=True, fetched_at=fetched_at, error=None,
                           seen_overall_picks=seen_overall_picks, locked_out=True)
-    except ESPNLeagueError as exc:
-        return SyncResult(ok=False, fetched_at=fetched_at, error=str(exc),
-                          seen_overall_picks=seen_overall_picks)
+    except Exception as exc:  # noqa: BLE001 - the draft page must never crash on a poll
+        return _fail(exc)
     finally:
-        if lock is not None:
-            lock.release()
-    draft = parse_draft(payload)
-    picks = draft.get("picks") or []
-    new_picks = diff_new_picks(picks, seen_overall_picks)
-    detected = build_detected_picks(new_picks, my_team_id=my_team_id, id_map=id_map,
-                                    board_names=board_names, board_positions=board_positions)
+        if lock is not None and acquired:
+            try:
+                lock.release()
+            except Exception:  # noqa: BLE001
+                pass
+    try:
+        draft = parse_draft(payload)
+        picks = draft.get("picks") or []
+        new_picks = diff_new_picks(picks, seen_overall_picks)
+        detected = build_detected_picks(new_picks, my_team_id=my_team_id, id_map=id_map,
+                                        board_names=board_names, board_positions=board_positions)
+    except Exception as exc:  # noqa: BLE001
+        return _fail(exc)
+    # Only picks that resolved to a board player are marked seen; unresolved ones (no
+    # player_id_map entry yet) stay unseen so a later poll retries them once the map is refreshed.
     updated_seen = seen_overall_picks | {
-        p["overall_pick"] for p in new_picks if p.get("overall_pick") is not None
+        d.overall_pick for d in detected
+        if d.player_id is not None and d.overall_pick is not None
     }
     return SyncResult(ok=True, fetched_at=fetched_at, error=None, detected=tuple(detected),
                       draft_completed=bool(draft.get("drafted")), seen_overall_picks=updated_seen)

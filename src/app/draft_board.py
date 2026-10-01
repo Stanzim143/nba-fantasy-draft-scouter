@@ -30,7 +30,7 @@ import pandas as pd
 import streamlit as st
 
 from src.app import coach_view, glossary, live_sync, txn_view
-from src.app.loader import BoardUnavailable, load_board, load_watchlist
+from src.app.loader import BoardUnavailable, load_board, load_watchlist, validate_data_dir_override
 from src.app.state import (
     ME,
     OPPONENT,
@@ -236,8 +236,9 @@ def _sidebar() -> None:
         # ordinary reruns, like a tab switch, fast); only an explicit rebuild forces fresh data.
         _cached_load_board.clear()
         try:
+            checked_dir = validate_data_dir_override(data_dir)
             board = _cached_load_board(season, model, teams_override or None, synthetic,
-                                       data_dir or None, positional)
+                                       str(checked_dir) if checked_dir else None, positional)
         except BoardUnavailable as e:
             st.session_state.board = None
             st.sidebar.error(str(e))
@@ -252,8 +253,20 @@ def _sidebar() -> None:
     st.sidebar.divider()
     st.sidebar.header("Draft state")
     if st.sidebar.button("Reset draft (clear all picks)"):
-        st.session_state.draft_state = DraftState()
-        st.sidebar.info("Draft state cleared.")
+        st.session_state.confirm_reset_draft = True
+    if st.session_state.get("confirm_reset_draft"):
+        st.sidebar.warning(f"This clears all {len(st.session_state.draft_state)} picks and the live-sync "
+                           "memory of which picks were seen. Export first if unsure.")
+        c_yes, c_no = st.sidebar.columns(2)
+        if c_yes.button("Yes, reset", type="primary"):
+            st.session_state.draft_state = DraftState()
+            # Also forget which ESPN picks were seen, or live sync would never re-apply them.
+            st.session_state.live_sync_status = live_sync.LiveSyncStatus()
+            st.session_state.confirm_reset_draft = False
+            st.sidebar.info("Draft state cleared.")
+        if c_no.button("Cancel"):
+            st.session_state.confirm_reset_draft = False
+            st.rerun()
 
     n_picks = len(st.session_state.draft_state)
     st.sidebar.download_button(

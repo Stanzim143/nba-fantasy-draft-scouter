@@ -191,3 +191,25 @@ def test_refresh_watchlist_button_reflects_data_changed_on_disk_between_clicks(m
     breakouts_tab = at.tabs[5]
     second = breakouts_tab.dataframe[0].value
     assert second["name"].tolist() == ["Prospect2"], "the watchlist still shows the stale first result"
+
+
+def test_reset_draft_needs_confirmation_and_clears_live_sync_memory():
+    at_mod = pytest.importorskip("streamlit.testing.v1")
+    from src.app import live_sync
+    from src.app.state import DraftState, draft_player
+
+    at = at_mod.AppTest.from_file(str(PAGE), default_timeout=120)
+    at.run()
+    at.session_state.draft_state = draft_player(DraftState(), 1, "A", "PG", "me")
+    at.session_state.live_sync_status = live_sync.LiveSyncStatus(seen_overall_picks=frozenset({1, 2}))
+    reset = next(b for b in at.sidebar.button if b.label.startswith("Reset draft"))
+    reset.click().run()
+    assert len(at.session_state.draft_state) == 1  # first click only asks
+    assert at.session_state.live_sync_status.seen_overall_picks == frozenset({1, 2})
+    next(b for b in at.sidebar.button if b.label == "Cancel").click().run()
+    assert len(at.session_state.draft_state) == 1
+    next(b for b in at.sidebar.button if b.label.startswith("Reset draft")).click().run()
+    next(b for b in at.sidebar.button if b.label == "Yes, reset").click().run()
+    assert len(at.session_state.draft_state) == 0
+    assert at.session_state.live_sync_status.seen_overall_picks == frozenset()
+    assert not at.exception

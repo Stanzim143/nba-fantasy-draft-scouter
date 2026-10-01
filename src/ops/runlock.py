@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 import socket
 import sys
 import time
@@ -66,9 +67,12 @@ class RunLock:
     clock: Callable[[], float] = time.time
     held: bool = False
     recovered_stale: Path | None = None
+    token: str | None = None   # per-acquisition random id; release only removes a lock carrying it
 
     def _owner_text(self) -> str:
-        return json.dumps({"pid": self.pid or os.getpid(), "host": socket.gethostname(), "acquired_at": self.clock(),
+        if self.token is None:
+            self.token = secrets.token_hex(16)
+        return json.dumps({"pid": self.pid or os.getpid(), "token": self.token, "host": socket.gethostname(), "acquired_at": self.clock(),
                            "acquired_iso": datetime.fromtimestamp(self.clock(), timezone.utc).isoformat()})
 
     def _read_owner(self) -> dict | None:
@@ -111,17 +115,35 @@ class RunLock:
             os.replace(self.path, moved)                          # preserved, not deleted
         except OSError as exc:
             raise LockBusy(f"stale lock ({reason}) could not be moved aside: {exc}", owner) from exc
+        try:
+            moved_owner = json.loads(moved.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            moved_owner = None
+        if moved_owner != owner:
+            # Another process recovered the same stale lock and created a fresh one between our read
+            # and our rename: we moved *its* live lock. Put it back and back off.
+            try:
+                if not self.path.exists():
+                    os.replace(moved, self.path)
+            except OSError:
+                pass
+            raise LockBusy("lock changed owner while recovering a stale one; another run took it", moved_owner)
         self.recovered_stale = moved
         if not self._try_create():                                # lost a race with another instance
             raise LockBusy("another daily refresh took the lock while recovering a stale one")
         self.held = True
         return self
 
+    def _is_mine(self, owner: dict) -> bool:
+        if "token" in owner:                                      # tokens are unique per acquisition
+            return owner["token"] == self.token
+        return int(owner.get("pid", -1)) == (self.pid or os.getpid())   # legacy lock file without a token
+
     def release(self) -> None:
         if not self.held:
             return
         owner = self._read_owner()
-        if owner is not None and int(owner.get("pid", -1)) == (self.pid or os.getpid()):   # never remove someone else's
+        if owner is not None and self._is_mine(owner):                                      # never remove someone else's
             self.path.unlink(missing_ok=True)
         self.held = False
 

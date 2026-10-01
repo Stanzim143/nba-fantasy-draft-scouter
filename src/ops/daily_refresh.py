@@ -587,12 +587,36 @@ def newest_with(states: list[dict[str, Any]], key: str) -> dict[str, Any] | None
 def read_history(path: Path) -> list[dict[str, Any]]:
     rows = []
     try:
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if line.strip():
-                rows.append(json.loads(line))
-    except (OSError, ValueError):
-        pass
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return rows
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue                                  # a torn / corrupt line must not hide the rest
+        if isinstance(row, dict):
+            rows.append(row)
     return rows
+
+
+def append_history(path: Path, row: dict[str, Any]) -> None:
+    """Append one JSON line; if a crashed earlier append left no trailing newline, start a fresh line first."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    prefix = ""
+    try:
+        with open(path, "rb") as fh:
+            fh.seek(0, os.SEEK_END)
+            if fh.tell():
+                fh.seek(-1, os.SEEK_END)
+                if fh.read(1) != b"\n":
+                    prefix = "\n"
+    except OSError:
+        pass
+    with open(path, "a", encoding="utf-8", newline="") as fh:
+        fh.write(prefix + json.dumps(row) + "\n")
 
 
 def consecutive_failures(history: list[dict[str, Any]]) -> int:

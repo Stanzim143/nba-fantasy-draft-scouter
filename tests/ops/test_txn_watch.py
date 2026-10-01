@@ -70,3 +70,10 @@ def test_cli_staff_and_player_search(tmp_path, capsys):
 def test_cli_without_a_ledger_says_how_to_make_one(tmp_path, capsys):
     assert tw.main(["--data-dir", str(tmp_path)]) == 2
     assert "espn_transactions" in capsys.readouterr().err
+
+
+def test_write_watermark_is_atomic_and_leaves_no_temp_files(tmp_path):
+    tw.write_watermark(tmp_path, pd.Timestamp("2026-09-24 10:00"))
+    tw.write_watermark(tmp_path, pd.Timestamp("2026-09-25 10:00"))
+    assert tw.read_watermark(tmp_path) == pd.Timestamp("2026-09-25 10:00")
+    assert [p.name for p in (tmp_path / "ops").iterdir()] == ["txn_watch.json"]

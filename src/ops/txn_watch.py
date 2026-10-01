@@ -40,9 +40,9 @@ def read_watermark(base: Path) -> pd.Timestamp | None:
 
 
 def write_watermark(base: Path, ts: pd.Timestamp) -> None:
-    p = watermark_path(base)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps({"acked_first_seen": pd.Timestamp(ts).isoformat()}), encoding="utf-8")
+    from src.ops.daily_refresh import atomic_write_text
+
+    atomic_write_text(watermark_path(base), json.dumps({"acked_first_seen": pd.Timestamp(ts).isoformat()}))
 
 
 def select_window(ledger: pd.DataFrame, *, days: int | None, since: date | None, watermark: pd.Timestamp | None,

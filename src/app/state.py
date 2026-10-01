@@ -213,26 +213,39 @@ def dict_to_state(data: dict) -> tuple[DraftState, dict]:
     duplicate player ids, bad ``drafted_by``) rather than constructing an inconsistent state."""
     try:
         raw_picks = data["picks"]
-    except (KeyError, TypeError) as e:
+        if not isinstance(raw_picks, list):
+            raise TypeError("'picks' must be a list")
+        meta = dict(data.get("meta") or {})
+    except (KeyError, TypeError, ValueError, AttributeError) as e:
         raise DraftError(f"malformed draft state: {e}") from e
     picks: list[Pick] = []
     seen: set[int] = set()
+    seen_pick_nos: set[int] = set()
     for i, row in enumerate(raw_picks):
         try:
+            if not isinstance(row, dict):
+                raise TypeError(f"pick must be an object, got {type(row).__name__}")
             pid = int(row["player_id"])
             drafted_by = row["drafted_by"]
             pick_no = int(row.get("pick_no", i + 1))
-        except (KeyError, TypeError, ValueError) as e:
+            name = row.get("name", "")
+            position = row.get("position")
+            if not isinstance(name, str) or not (position is None or isinstance(position, str)):
+                raise TypeError("name and position must be strings")
+        except (KeyError, TypeError, ValueError, AttributeError) as e:
             raise DraftError(f"malformed pick at index {i}: {e}") from e
         if drafted_by not in DRAFTED_BY_VALUES:
             raise DraftError(f"pick at index {i} has invalid drafted_by {drafted_by!r}")
         if pid in seen:
             raise DraftError(f"duplicate player_id {pid} in imported draft state")
+        if pick_no in seen_pick_nos:
+            raise DraftError(f"duplicate pick_no {pick_no} in imported draft state")
         seen.add(pid)
-        picks.append(Pick(player_id=pid, name=row.get("name", ""), position=row.get("position"),
+        seen_pick_nos.add(pick_no)
+        picks.append(Pick(player_id=pid, name=name, position=position,
                           drafted_by=drafted_by, pick_no=pick_no))
     picks.sort(key=lambda p: p.pick_no)
-    return DraftState(picks=tuple(picks)), dict(data.get("meta") or {})
+    return DraftState(picks=tuple(picks)), meta
 
 
 def json_to_state(text: str) -> tuple[DraftState, dict]:

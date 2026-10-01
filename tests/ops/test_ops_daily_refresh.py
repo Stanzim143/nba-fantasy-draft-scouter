@@ -254,3 +254,13 @@ def test_default_boards_include_the_debut_board_and_report_says_so():
     lines = [ln for ln in render_report(run).splitlines() if ln.startswith("- `")]
     assert "debutants and undrafted signees" in next(ln for ln in lines if "baseline_offseason_debut" in ln)
     assert "debutants" not in next(ln for ln in lines if "y.csv" in ln)
+
+
+def test_history_reader_skips_torn_lines_and_append_repairs_missing_newline(tmp_path):
+    p = tmp_path / "history.jsonl"
+    p.write_text('{"run_id": "a", "ok": true}\n{"run_id": "b", "ok": fal', encoding="utf-8")  # torn last line
+    assert [r["run_id"] for r in dr.read_history(p)] == ["a"]
+    dr.append_history(p, {"run_id": "c", "ok": False})
+    assert [r["run_id"] for r in dr.read_history(p)] == ["a", "c"]
+    p.write_text('{"run_id": "a"}\ngarbage\n[1]\n{"run_id": "z"}\n', encoding="utf-8")
+    assert [r["run_id"] for r in dr.read_history(p)] == ["a", "z"]

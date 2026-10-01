@@ -346,3 +346,17 @@ def test_need_board_view_excludes_drafted_players_and_reflects_my_roster(board):
     c_need = view.position_table.loc[view.position_table["need_position"] == "C", "need_score"].iloc[0]
     pg_need = view.position_table.loc[view.position_table["need_position"] == "PG", "need_score"].iloc[0]
     assert pg_need > c_need   # PG still wide open, C partially covered by my one drafted center
+
+
+@pytest.mark.parametrize("data", [
+    {"picks": ["not a dict"]},
+    {"picks": [5]},
+    {"picks": "abc"},
+    {"picks": [{"player_id": 1, "drafted_by": "me", "name": 7}]},
+    {"picks": [{"player_id": 1, "drafted_by": "me", "pick_no": 1}, {"player_id": 2, "drafted_by": "me", "pick_no": 1}]},
+    {"picks": [], "meta": [1]},
+    ["picks"],
+])
+def test_import_malformed_shapes_raise_draft_error_not_attribute_error(data):
+    with pytest.raises(DraftError):
+        dict_to_state(data)
