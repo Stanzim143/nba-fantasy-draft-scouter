@@ -54,6 +54,9 @@ USER_AGENT = "Mozilla/5.0 (compatible; nba-fantasy-2026/0.1; personal non-commer
 FIRST_REPORT_DATE = date(2018, 12, 19)
 SLOTS = ("05PM", "06PM", "01PM", "03PM", "08AM")
 MIN_INTERVAL = 1.5
+RETRIES = 3             # extra attempts on 429/5xx/network errors (backoff BACKOFF_BASE * 2**n seconds)
+BACKOFF_BASE = 5.0
+CANARY_EVERY = 200      # re-verify the host still serves a known report after this many requests before trusting 403s
 RETRY_DAYS = 5          # a date this recent with no report yet is probed again on the next run (published late, or a blip)
 STATUSES = ("Out", "Doubtful", "Questionable", "Probable", "Available")
 COLUMNS = ["season", "game_date", "report_ts", "slot", "matchup", "team_abbr", "player_name", "player_id", "status",
@@ -249,17 +252,25 @@ def season_of(day: date, date_to_season: dict | None) -> str:
     return season_str(y)
 
 
-def rows_to_frame(rows: list[dict], slot: str, resolver: PlayerResolver | None, date_to_season: dict | None) -> pd.DataFrame:
+def rows_to_frame(rows: list[dict], slot: str, resolver: PlayerResolver | None, date_to_season: dict | None,
+                  bad_rows: list | None = None) -> pd.DataFrame:
+    """``bad_rows`` (if given) collects rows skipped for a malformed game date or report timestamp."""
     out = []
     for r in rows:
         if not r["game_date"] or not r["report_ts"]:
             continue
-        gd = datetime.strptime(r["game_date"], "%m/%d/%Y").date()
+        try:
+            gd = datetime.strptime(r["game_date"], "%m/%d/%Y").date()
+            report_ts = pd.to_datetime(r["report_ts"], format="%Y-%m-%d %I:%M %p")
+        except ValueError:
+            if bad_rows is not None:
+                bad_rows.append(r)
+            continue
         season = season_of(gd, date_to_season)
         abbr = team_abbr_of(r["team"])
         name = display_name(r["player"])
         pid = resolver.resolve(name, abbr, season) if resolver else None
-        out.append({"season": season, "game_date": pd.Timestamp(gd), "report_ts": pd.to_datetime(r["report_ts"], format="%Y-%m-%d %I:%M %p"),
+        out.append({"season": season, "game_date": pd.Timestamp(gd), "report_ts": report_ts,
                     "slot": slot, "matchup": r["matchup"], "team_abbr": abbr, "player_name": name, "player_id": pid,
                     "status": r["status"], "category": r["category"], "detail": r["detail"]})
     df = pd.DataFrame(out, columns=COLUMNS)
@@ -267,6 +278,18 @@ def rows_to_frame(rows: list[dict], slot: str, resolver: PlayerResolver | None, 
     df["game_date"] = df["game_date"].astype("datetime64[ms]")
     df["report_ts"] = df["report_ts"].astype("datetime64[ms]")
     return df
+
+
+def atomic_write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 def atomic_write_parquet(df: pd.DataFrame, path: Path) -> None:
@@ -302,6 +325,7 @@ class Fetcher:
         self.max_requests = max_requests
         self.requests = 0
         self._last = None
+        self._canary_at = -1
         self.index = self._load_index()
 
     # -- index: which (date, slot) exist, which are known absent
@@ -318,7 +342,7 @@ class Fetcher:
 
     def save_index(self) -> None:
         self.dir.mkdir(parents=True, exist_ok=True)
-        self.index_file.write_text(json.dumps(self.index, indent=1, sort_keys=True), encoding="utf-8")
+        atomic_write_text(self.index_file, json.dumps(self.index, indent=1, sort_keys=True))
 
     def pdf_file(self, day: date, slot: str) -> Path:
         return self.dir / f"{day.isoformat()}_{slot}.pdf"
@@ -333,46 +357,83 @@ class Fetcher:
         return self.max_requests is None or self.requests < self.max_requests
 
     def _get(self, day: date, slot: str) -> bytes | None:
-        if self._last is not None:
-            wait = self.interval - (self._clock() - self._last)
-            if wait > 0:
-                self._sleep(wait)
-        self._last = self._clock()
-        self.requests += 1
-        try:
-            return self._open(report_url(day, slot))
-        except urllib.error.HTTPError as e:
-            if e.code in (403, 404):
-                return None
-            raise InjuryReportError(f"HTTP {e.code} for {report_url(day, slot)}") from e
-        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as e:
-            raise InjuryReportError(f"network error for {report_url(day, slot)}: {e}") from e
+        """The report bytes, or ``None`` when the host answers 403/404 (S3's "no such key"). 429/5xx and network
+        errors are retried with exponential backoff, then raised -- never mistaken for an absent report."""
+        url = report_url(day, slot)
+        problem = ""
+        for attempt in range(RETRIES + 1):
+            if self._last is not None:
+                wait = self.interval - (self._clock() - self._last)
+                if wait > 0:
+                    self._sleep(wait)
+            self._last = self._clock()
+            self.requests += 1
+            try:
+                return self._open(url)
+            except urllib.error.HTTPError as e:
+                if e.code in (403, 404):
+                    return None
+                if e.code != 429 and e.code < 500:
+                    raise InjuryReportError(f"HTTP {e.code} for {url}") from e
+                problem = f"HTTP {e.code} for {url}"
+            except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as e:
+                problem = f"network error for {url}: {e}"
+            if attempt < RETRIES:
+                self._sleep(BACKOFF_BASE * 2 ** attempt)
+        raise InjuryReportError(f"{problem} (gave up after {RETRIES + 1} attempts)")
+
+    def _absence_confirmed(self) -> bool:
+        """A 403 means "no such report" only while the host is serving at all: before recording a date as absent,
+        re-request a report already cached (known good). If that now fails too we are being blocked, not looking at a gap
+        -- raise instead of poisoning the index. No cached report yet means nothing to check against."""
+        if self.requests - self._canary_at < CANARY_EVERY and self._canary_at >= 0:
+            return True
+        known = sorted(self.index["fetched"].items())
+        if not known:
+            return True
+        key, slot = known[-1]
+        if self._get(date.fromisoformat(key), slot) is None:
+            raise InjuryReportError(f"{report_url(date.fromisoformat(key), slot)} (a report fetched earlier) now answers "
+                                    "403/404: the host is blocking this client; not recording absent dates")
+        self._canary_at = self.requests
+        return True
 
     def fetch_day(self, day: date) -> str | None:
-        """Slot of the report cached or downloaded for ``day`` (``None`` if none exists or the budget ran out first)."""
+        """Slot of the report cached or downloaded for ``day`` (``None`` if none exists or the budget ran out first).
+
+        A recent day whose cached report is a lower-priority slot is probed again for the preferred ones (they may have
+        been published since); the better slot replaces it."""
         key = day.isoformat()
-        slot = self.index["fetched"].get(key)
-        if slot and self.pdf_file(day, slot).exists():
-            return slot
+        cached = self.index["fetched"].get(key)
+        if cached and self.pdf_file(day, cached).exists():
+            if self.offline or not self._recent(day) or cached not in SLOTS or cached == SLOTS[0]:
+                return cached
+            candidates, tried = SLOTS[:SLOTS.index(cached)], set()
+        else:
+            cached = None
+            tried = set() if self._recent(day) else set(self.index["absent"].get(key, []))
+            candidates = SLOTS
         if self.offline:
             return None
-        tried = set() if self._recent(day) else set(self.index["absent"].get(key, []))
-        for slot in SLOTS:
+        new_absent = False
+        for slot in candidates:
             if slot in tried:
                 continue
             if not self.budget_left():
-                return None
+                break
             data = self._get(day, slot)
             if data is None:
                 tried.add(slot)
-                self.index["absent"][key] = sorted(tried)
+                new_absent = True
                 continue
             self.dir.mkdir(parents=True, exist_ok=True)
             self.pdf_file(day, slot).write_bytes(data)
             self.index["fetched"][key] = slot
             self.index["absent"].pop(key, None)
             return slot
-        return None
+        if new_absent and not cached and self._absence_confirmed():
+            self.index["absent"][key] = sorted(tried)
+        return cached
 
     @staticmethod
     def _recent(day: date) -> bool:
@@ -381,7 +442,10 @@ class Fetcher:
     def done(self, day: date) -> bool:
         """Fetched, or every slot known absent for a date old enough that a late publication is no longer expected."""
         key = day.isoformat()
-        return key in self.index["fetched"] or (set(SLOTS) <= set(self.index["absent"].get(key, [])) and not self._recent(day))
+        if key in self.index["fetched"]:
+            best = self.index["fetched"][key] == SLOTS[0]
+            return best or not self._recent(day)    # a recent day holding a lower-priority slot is revisited
+        return (set(SLOTS) <= set(self.index["absent"].get(key, [])) and not self._recent(day))
 
 
 # --------------------------------------------------------------------------- ingest
@@ -440,7 +504,10 @@ def rebuild_table(fetcher: Fetcher, resolver: PlayerResolver | None, date_to_sea
             continue
         if not rows and result is not None:
             result.parse_failures.append(f"{key} {slot}: no rows parsed")
-        frames.append(rows_to_frame(rows, slot, resolver, date_to_season))
+        bad: list = []
+        frames.append(rows_to_frame(rows, slot, resolver, date_to_season, bad))
+        if bad and result is not None:
+            result.parse_failures.append(f"{key} {slot}: {len(bad)} row(s) with a malformed game date/time skipped")
     if not frames:
         return pd.DataFrame(columns=COLUMNS).astype({"player_id": "Int64"})
     df = pd.concat(frames, ignore_index=True)
@@ -464,7 +531,7 @@ def ingest(base: Path | None = None, *, seasons: list[str] | None = None, since:
     resolver = PlayerResolver.build(players, logs)
     fetcher = Fetcher(base, interval=interval, offline=offline, opener=opener, sleep=sleep, clock=clock,
                       max_requests=max_requests)
-    before = set(fetcher.index["fetched"])
+    before = dict(fetcher.index["fetched"])
     res = IngestResult(n_dates=len(days))
     try:
         for i, day in enumerate(days):
@@ -483,7 +550,7 @@ def ingest(base: Path | None = None, *, seasons: list[str] | None = None, since:
     res.n_fetched = sum(1 for d in days if d.isoformat() in fetcher.index["fetched"])
     res.n_absent = sum(1 for d in days if d.isoformat() not in fetcher.index["fetched"] and fetcher.done(d))
     res.n_pending = res.n_dates - res.n_fetched - res.n_absent
-    new_days = set(fetcher.index["fetched"]) - before
+    new_days = {k for k, v in fetcher.index["fetched"].items() if before.get(k) != v}
     path = table_path(base)
     if path.exists() and not rebuild and not offline:
         # incremental: parse only what this run downloaded and merge it into the stored table (a nightly run is seconds, not minutes)

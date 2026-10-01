@@ -287,3 +287,77 @@ def test_a_recent_date_without_a_report_is_probed_again_but_an_old_one_is_not(tm
     m = len(host.calls)
     f.fetch_day(old)
     assert len(host.calls) == m and f.done(old)
+
+
+# --------------------------------------------------------------------------- review fixes
+
+def test_transient_server_errors_are_retried_with_backoff(tmp_path):
+    n = {"calls": 0}
+
+    def flaky(url):
+        n["calls"] += 1
+        if n["calls"] <= 2:
+            raise urllib.error.HTTPError(url, 503, "busy", {}, None)
+        return b"%PDF ok"
+
+    clock = Clock()
+    f = R.Fetcher(tmp_path, opener=flaky, sleep=clock.sleep, clock=clock.now)
+    assert f.fetch_day(date(2019, 1, 10)) == "05PM" and n["calls"] == 3
+    assert R.BACKOFF_BASE in clock.slept and R.BACKOFF_BASE * 2 in clock.slept
+
+
+def test_a_network_error_is_retried_then_raised_not_recorded_absent(tmp_path):
+    def down(url):
+        raise urllib.error.URLError("dns")
+
+    f = R.Fetcher(tmp_path, opener=down, sleep=lambda s: None)
+    with pytest.raises(R.InjuryReportError, match="network error"):
+        f.fetch_day(date(2019, 1, 10))
+    assert f.requests == R.RETRIES + 1 and not f.index["absent"]
+
+
+def test_blanket_403_is_not_recorded_as_absent_when_a_known_good_report_now_fails(tmp_path):
+    f, host, _ = _fetcher(tmp_path, {"2019-01-10_05PM"})
+    assert f.fetch_day(date(2019, 1, 10)) == "05PM"
+    host.have.clear()                                                    # the host starts blocking us
+    with pytest.raises(R.InjuryReportError, match="blocking"):
+        f.fetch_day(date(2019, 1, 11))
+    assert "2019-01-11" not in f.index["absent"]
+
+
+def test_genuinely_absent_date_is_confirmed_against_the_known_good_report(tmp_path):
+    f, host, _ = _fetcher(tmp_path, {"2019-01-10_05PM"})
+    f.fetch_day(date(2019, 1, 10))
+    assert f.fetch_day(date(2019, 1, 11)) is None
+    assert f.index["absent"]["2019-01-11"] == sorted(R.SLOTS)
+
+
+def test_a_recent_day_holding_a_lower_priority_slot_is_upgraded_later(tmp_path):
+    today = date.today()
+    key = today.isoformat()
+    f, host, _ = _fetcher(tmp_path, {f"{key}_01PM"})
+    assert f.fetch_day(today) == "01PM" and not f.done(today)           # not final: a preferred slot may appear
+    host.have.add(f"{key}_05PM")
+    assert f.fetch_day(today) == "05PM" and f.done(today)
+    n = len(host.calls)
+    assert f.fetch_day(today) == "05PM" and len(host.calls) == n         # the preferred slot is final
+    old = date(2019, 1, 10)
+    f2, host2, _ = _fetcher(tmp_path / "o", {"2019-01-10_01PM"})
+    f2.fetch_day(old)
+    assert f2.done(old)                                                  # an old day's slot is final
+
+
+def test_index_is_written_atomically(tmp_path):
+    f, _, _ = _fetcher(tmp_path, set())
+    f.index["absent"]["2019-01-11"] = ["05PM"]
+    f.save_index()
+    assert R.Fetcher(tmp_path).index["absent"] == {"2019-01-11": ["05PM"]}
+    assert not list(f.dir.glob("*.tmp"))
+
+
+def test_one_malformed_game_date_is_skipped_and_counted_not_fatal():
+    rows = R.parse_report_text(MODERN)
+    rows.append({**rows[0], "game_date": "13/45/2021"})
+    bad: list = []
+    frame = R.rows_to_frame(rows, "05PM", None, None, bad)
+    assert len(bad) == 1 and len(frame) == len(rows) - 1
