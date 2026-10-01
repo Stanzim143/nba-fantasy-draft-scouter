@@ -849,6 +849,22 @@ def write_player_contracts(df: pd.DataFrame, base: Path | None = None) -> Path:
     return path
 
 
+def merge_player_contracts(existing: pd.DataFrame | None, new: pd.DataFrame, seasons: set[str],
+                           skipped_seasons: set[str]) -> pd.DataFrame:
+    """``new`` replaces the rows of the ingested ``page_season``s; other seasons are kept. A season with
+    skipped pages that already has rows keeps them (a partial refetch must not truncate it)."""
+    if existing is None or existing.empty:
+        return new
+    keep_old = skipped_seasons & set(existing["page_season"])
+    replace = seasons - keep_old
+    kept = existing[~existing["page_season"].isin(replace)]
+    new = new[~new["page_season"].isin(keep_old)]
+    frames = [f for f in (kept, new) if len(f)]
+    if not frames:
+        return new
+    return finalize_frame(pd.concat(frames, ignore_index=True))
+
+
 def read_player_contracts(base: Path | None = None) -> pd.DataFrame:
     path = player_contracts_path(base)
     if not path.exists():
@@ -915,6 +931,11 @@ def run_ingest(seasons: list[str], client: CachedHttpClient, base: Path | None =
 
     result.report = build_report(raw, matched, deduped, frame, page_stats, match_report, seasons)
     if write:
+        # Replace only the pages fetched this run; seasons passed but fully absent keep their rows.
+        skipped_seasons = {p["season"] for p in result.skipped_pages}
+        existing = (pd.read_parquet(player_contracts_path(base))
+                    if player_contracts_path(base).exists() else None)
+        frame = merge_player_contracts(existing, frame, set(seasons), skipped_seasons)
         path = write_player_contracts(frame, base)
         result.written_rows = len(frame)
         log(f"wrote {len(frame):,} player_contracts rows -> {path}")
@@ -1000,6 +1021,10 @@ def main(argv: list[str] | None = None, *, client: CachedHttpClient | None = Non
     print(f"done: {res.fetched} pages, {len(res.skipped_pages)} skipped, {t['rows_parsed']} rows parsed, "
           f"{t['contract_event_rows']} contract-event rows ({t['rows_with_years']} with years), "
           f"{t['matched_rows']} matched, {res.written_rows} written; {res.network_requests} network requests")
+    if res.skipped_pages:
+        print(f"WARNING: {len(res.skipped_pages)} page(s) skipped; existing rows for those seasons were kept. "
+              f"Re-run to retry.", file=sys.stderr)
+        return 1
     return 0
 
 

@@ -634,3 +634,25 @@ def test_yearless_roll_is_cross_checked_against_the_rows_own_citation():
     assert r2["Truly Rolled"].date == pd.Timestamp("2025-06-30")       # citation 2025 agrees: rolled
     for row in r2.values():                                            # a roll only ever moves a date later
         assert row.date >= pd.Timestamp("2024-06-01")
+
+
+def test_merge_player_contracts_replaces_only_ingested_seasons():
+    old = _valid_frame()
+    old = pd.concat([old.assign(page_season="2015-16", player_id=old["player_id"] + 1000), old], ignore_index=True)
+    new = _valid_frame().assign(player_id=lambda d: d["player_id"] + 5000)
+    merged = wc.merge_player_contracts(old, new, {"2016-17"}, set())
+    assert set(merged[merged["page_season"] == "2015-16"]["player_id"]) == set(old[old["page_season"] == "2015-16"]["player_id"])
+    assert set(merged[merged["page_season"] == "2016-17"]["player_id"]) == set(new["player_id"])
+    # a season with skipped pages that already has rows is left as it was
+    kept = wc.merge_player_contracts(old, new, {"2016-17"}, {"2016-17"})
+    assert set(kept["player_id"]) == set(old["player_id"])
+
+
+def test_cli_exits_nonzero_when_pages_were_skipped(tmp_path, capsys):
+    base = tmp_path / "data"
+    write_table(_players([("Kevin Durant", 501)]), "players", base)
+    clock = FakeClock()
+    client = CachedHttpClient(tmp_path / "raw_wiki", session=_Session({wt.team_season_page_title(GSW, "2016-17"): OLD_FORMAT}),
+                              clock=clock, sleep=clock.sleep, offline=False, min_interval=0, jitter=0)
+    assert wc.main(["--seasons", "2016-17", "--data-dir", str(base)], client=client) == 1
+    assert "skipped" in capsys.readouterr().err

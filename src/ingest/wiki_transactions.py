@@ -499,6 +499,11 @@ def run_ingest(seasons: list[str], client: CachedHttpClient, base: Path | None =
     txns = txns.drop_duplicates(ignore_index=True)
     txns = txns.sort_values(["season", "team_id", "direction", "txn_date"], kind="stable").reset_index(drop=True)
 
+    # Replace only the (season, team) pages fetched this run; every other season/team already in the
+    # table (and every page that failed to fetch) keeps its previously ingested rows.
+    fetched_pages = {(s, t) for s in seasons for t in TEAM_WIKI_NAMES} -         {(p["season"], p["team_id"]) for p in result.skipped_pages}
+    existing_txns = read_team_transactions(base) if team_transactions_path(base).exists() else None
+    txns = merge_team_transactions(existing_txns, txns, fetched_pages)
     written_path = write_team_transactions(txns, base)
     result.written_rows = len(txns)
     log(f"wrote {len(txns):,} team_transactions rows -> {written_path}")
@@ -517,13 +522,32 @@ def _existing_id_map(base: Path) -> pd.DataFrame | None:
     return read_table("player_id_map", base, validate=False) if table_exists("player_id_map", base) else None
 
 
-def merge_id_map(existing: pd.DataFrame | None, new: pd.DataFrame, *, source: str) -> pd.DataFrame:
-    """Replace this source's rows with the freshly matched set; leave every other source (e.g.
-    ``"espn"``) untouched -- same precedent as ``espn_adp.merge_id_map``."""
+def merge_team_transactions(existing: pd.DataFrame | None, new: pd.DataFrame,
+                            fetched_pages: set[tuple[str, int]]) -> pd.DataFrame:
+    """``new`` replaces the rows of exactly the (season, team_id) pages fetched this run; all other
+    existing rows are kept, so a partial or single-season run never truncates the table."""
     if existing is None or existing.empty:
         return new.reset_index(drop=True)
-    kept = existing[existing["source"] != source]
+    in_run = pd.Series([(s, int(t)) in fetched_pages for s, t in zip(existing["season"], existing["team_id"])],
+                       index=existing.index)
+    frames = [f for f in (existing[~in_run], new) if len(f)]
+    if not frames:
+        return new.reset_index(drop=True)
+    merged = pd.concat(frames, ignore_index=True)
+    merged["txn_date"] = pd.to_datetime(merged["txn_date"])
+    return merged.sort_values(["season", "team_id", "direction", "txn_date"], kind="stable").reset_index(drop=True)
+
+
+def merge_id_map(existing: pd.DataFrame | None, new: pd.DataFrame, *, source: str) -> pd.DataFrame:
+    """Upsert this source's freshly matched rows by ``source_id`` (rows for names outside this run's
+    seasons are kept); leave every other source (e.g. ``"espn"``) untouched."""
+    if existing is None or existing.empty:
+        return new.reset_index(drop=True)
+    kept = existing[(existing["source"] != source)
+                    | ~existing["source_id"].isin(set(new["source_id"]))]
     frames = [f for f in (kept, new) if len(f)]
+    if not frames:
+        return new.reset_index(drop=True)
     merged = pd.concat(frames, ignore_index=True) if len(frames) > 1 else frames[0].copy()
     return merged.sort_values(["source", "source_id"], kind="stable").reset_index(drop=True)
 
@@ -611,6 +635,10 @@ def main(argv: list[str] | None = None, *, client: CachedHttpClient | None = Non
           f"{result.network_requests} network requests, {result.cache_hits} cache hits")
     if result.match_report is not None:
         print(f"id matching: {result.match_report.summary()}")
+    if result.skipped_pages:
+        print(f"WARNING: {len(result.skipped_pages)} page(s) skipped; their existing rows were kept. "
+              f"Re-run to retry.", file=sys.stderr)
+        return 1
     return 0
 
 

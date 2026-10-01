@@ -410,3 +410,35 @@ def test_main_reports_failure_cleanly(tmp_path, capsys):
     assert rc == 1
     captured = capsys.readouterr()
     assert "wiki transactions ingest failed" in captured.err
+
+
+def test_merge_team_transactions_replaces_only_fetched_pages():
+    def rows(season, team, pid):
+        return pd.DataFrame({"season": [season], "team_id": [team], "player_id": [pid], "direction": ["in"],
+                             "source_kind": ["addition"], "txn_date": pd.to_datetime(["2016-07-01"])})
+    existing = pd.concat([rows("2015-16", GSW, 1), rows("2016-17", GSW, 2), rows("2016-17", MEM, 3)],
+                         ignore_index=True)
+    new = rows("2016-17", GSW, 9)
+    merged = wt.merge_team_transactions(existing, new, {("2016-17", GSW)})
+    assert sorted(merged["player_id"]) == [1, 3, 9]
+
+
+def test_merge_id_map_keeps_this_sources_rows_outside_the_run():
+    cols = dict(source=[wt.SOURCE], source_name=["x"], match_method=["exact"], confidence=[1.0])
+    existing = pd.DataFrame({"player_id": [1], "source_id": ["Old Guy__2015"], **cols})
+    new = pd.DataFrame({"player_id": [2], "source_id": ["Kevin Durant__2016"], **cols})
+    merged = wt.merge_id_map(existing, new, source=wt.SOURCE)
+    assert set(merged["source_id"]) == {"Old Guy__2015", "Kevin Durant__2016"}
+
+
+def test_run_ingest_keeps_existing_rows_of_other_seasons_and_main_fails_on_skips(tmp_path, capsys):
+    base = tmp_path / "data"
+    make_players_table(base)
+    wt.write_team_transactions(pd.DataFrame({
+        "season": ["2015-16"], "team_id": [GSW], "player_id": [1], "direction": ["in"],
+        "source_kind": ["addition"], "txn_date": pd.to_datetime(["2015-07-01"])}), base)
+    title = wt.team_season_page_title(GSW, "2016-17")
+    client, _ = make_client(tmp_path, {title: load_fixture("2016-17_Golden_State_Warriors.wiki")})
+    assert wt.main(["--seasons", "2016-17", "--data-dir", str(base)], client=client) == 1
+    assert "skipped" in capsys.readouterr().err
+    assert 1 in set(wt.read_team_transactions(base)["player_id"])
