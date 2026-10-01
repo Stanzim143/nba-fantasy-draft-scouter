@@ -110,5 +110,9 @@ def test_load_blend_modes(tmp_path):
     assert load_blend(str(tmp_path / "processed" / AB.BLEND_FILE), tmp_path) == b
     (tmp_path / "processed" / AB.BLEND_FILE).write_text("{not json", encoding="utf-8")
     assert load_blend("auto", tmp_path) is None                       # a corrupt auto file never blocks the board
+    b.save(tmp_path / "processed" / AB.BLEND_FILE)
+    assert load_blend("auto", tmp_path, "m") == b                     # fitted for this model: applied
+    assert load_blend("auto", tmp_path, "other") is None              # fitted for another model: not applied
+    assert load_blend(str(tmp_path / "processed" / AB.BLEND_FILE), tmp_path, "other") == b   # explicit path: warned only
     with pytest.raises(FileNotFoundError):                            # an explicit path that cannot be read is an error
         load_blend(str(tmp_path / "missing.json"), tmp_path)

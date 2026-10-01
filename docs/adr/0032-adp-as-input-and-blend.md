@@ -71,3 +71,12 @@ depth picks. Use `blend_rank` for the first rounds, `rank` for the rest.
 * The backtest still reports ADP as an independent arm, so the benchmark comparison stays honest.
 
 Reproduce: `python -m src.backtest --model baseline_hurdle_adp_offseason_debut --benchmark baseline_offseason_debut --adp-file <processed>/adp.parquet --method-checks`.
+
+## Addendum 2026-10-02: blend/model guard and loud fallbacks
+
+An independent review found that `--adp-blend auto` applied `adp_blend.json` to any board model although its coefficients are only valid
+for the model they were fitted on (`AdpBlend.model`). `load_blend(..., model)` now skips an `auto` blend fitted for a different model
+(warning) and only warns for an explicitly named path; the board CLI and the app loader pass their model. `adp_blend fit` now defaults to
+the board default `baseline_hurdle_adp_offseason_debut`; refit with `python -m src.value.adp_blend fit` right before the draft. The ADP-aware
+projectors also log a warning when the ADP table, the injury-label table, or ADP for the target season is missing, instead of silently
+running as the base model.

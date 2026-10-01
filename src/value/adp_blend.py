@@ -12,7 +12,7 @@ happened), stored as JSON next to the data (``adp_blend.json``) and applied to t
 ``blend_rank`` / ``blend_tier`` then come from the ordinary VORP machinery run on the blended totals, so they are directly
 comparable with ``vorp`` / ``rank`` / ``tier``; floor, ceiling and games played stay the model's own.
 
-CLI (fits from the real history, about a minute): ``python -m src.value.adp_blend fit --model baseline_hurdle``.
+CLI (fits from the real history, about a minute): ``python -m src.value.adp_blend fit --model baseline_hurdle_adp_offseason_debut``.
 """
 from __future__ import annotations
 
@@ -162,7 +162,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m src.value.adp_blend", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
     f = sub.add_parser("fit", help="fit the blend from the walk-forward history and write adp_blend.json")
-    f.add_argument("--model", default="baseline_hurdle")
+    f.add_argument("--model", default="baseline_hurdle_adp_offseason_debut")
     f.add_argument("--seasons", default="2016-17:2025-26")
     f.add_argument("--data-dir", type=Path, default=None)
     f.add_argument("--out", type=Path, default=None, help=f"default: <data dir>/processed/{BLEND_FILE}")

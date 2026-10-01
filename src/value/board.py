@@ -188,12 +188,26 @@ def load_adp_for_board(path: Path, season: str, data_dir: Path | None, *, source
     return frame[["player_id", "adp"]], stats
 
 
-def load_blend(spec: str | Path | None, data_dir: Path | None):
+def load_blend(spec: str | Path | None, data_dir: Path | None, model: str | None = None):
     """The ADP blend named by ``spec`` ('off' / None -> none; 'auto' -> the data dir's file if present; else a path).
 
     A missing or unreadable 'auto' file is simply no blend (the board then has no ``blend_*`` columns); an explicit path
-    that cannot be read is an error, so a typo is not silently ignored.
+    that cannot be read is an error, so a typo is not silently ignored. With ``model`` given, a blend fitted for a different
+    projector is not applied from 'auto' (its coefficients would be mis-specified) and only warned about when named explicitly.
     """
+    blend = _read_blend(spec, data_dir)
+    if blend is not None and model is not None and blend.model != model:
+        import logging
+
+        applied = str(spec) != "auto"
+        logging.getLogger(__name__).warning(
+            "ADP blend was fitted for model '%s', not '%s'; %s (refit: python -m src.value.adp_blend fit --model %s)",
+            blend.model, model, "applying it anyway (explicit path)" if applied else "NOT applying it", model)
+        return blend if applied else None
+    return blend
+
+
+def _read_blend(spec: str | Path | None, data_dir: Path | None):
     from src.contracts import data_dir as default_dir
     from src.value.adp_blend import BLEND_FILE, AdpBlend
 
@@ -260,7 +274,7 @@ def main(argv: list[str] | None = None) -> int:
                         f"{adp_stats['n_low_confidence']} below confidence threshold, "
                         f"{adp_stats['n_duplicates']} duplicate picks, out of {adp_stats['n_rows']} raw rows)")
     games = target_season_games(season_lengths(history, None)) if len(history.team_games) else 82
-    blend = load_blend(args.adp_blend, args.data_dir) if adp is not None else None
+    blend = load_blend(args.adp_blend, args.data_dir, args.model) if adp is not None else None
     board = build_board(proj, history.players, teams=args.teams, adp=adp, bench_weight=args.bench_weight,
                         season_games=games, positional=args.positional, blend=blend)
     if not args.synthetic:

@@ -14,6 +14,8 @@ data a projector degrades to its base model (every feature column is zero), it d
 """
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 import pandas as pd
 
@@ -23,6 +25,8 @@ from src.features.injury_labels import InjuryLabelFeatures
 from src.features.return_health import ConcatFeatures
 from src.models.baseline import BaselineProjector
 from src.models.debutants import DebutantBaselineProjector
+
+LOGGER = logging.getLogger(__name__)
 
 ADP_COLS, LABEL_COLS = 3, 6       # widths of AdpFeatures.build / InjuryLabelFeatures.build
 
@@ -62,7 +66,8 @@ class ContextHooks:
         if self._adp is None:
             try:
                 self._adp = load_store_adp()
-            except (FileNotFoundError, ImportError, OSError):
+            except (FileNotFoundError, ImportError, OSError) as e:
+                LOGGER.warning("ADP table unavailable (%s): the ADP-aware model runs WITHOUT ADP (zeroed ADP columns)", e)
                 return None
         return self._adp
 
@@ -81,7 +86,8 @@ class ContextHooks:
                 from src.ingest.nba_injury_reports import read_injury_reports
 
                 reports = read_injury_reports()
-            except (FileNotFoundError, ImportError, OSError):
+            except (FileNotFoundError, ImportError, OSError) as e:
+                LOGGER.warning("labelled injury reports unavailable (%s): the model runs WITHOUT injury-label features", e)
                 return None
         cutoff = season_start(history.target_season)
         reports = reports[reports["season"].map(season_start) < cutoff]
@@ -95,7 +101,10 @@ class ContextHooks:
             return None
         parts = []
         if self.use_adp:
-            parts.append(self._adp_features(history) or _Zeros(ADP_COLS))
+            adp_feats = self._adp_features(history)
+            if adp_feats is None or int(season_start(history.target_season)) not in adp_feats.covered:
+                LOGGER.warning("no ADP covers target season %s: ADP is ignored by the model", history.target_season)
+            parts.append(adp_feats or _Zeros(ADP_COLS))
         if self.use_labels:
             parts.append(self._label_features(history) or _Zeros(LABEL_COLS))
         return parts[0] if len(parts) == 1 else ConcatFeatures(parts)

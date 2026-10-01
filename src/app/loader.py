@@ -160,7 +160,7 @@ def load_board(season: str, model: str = "baseline", *, teams: int | None = None
     if adp is not None:
         from src.value.board import load_blend
 
-        blend = load_blend("auto", data_dir)
+        blend = load_blend("auto", data_dir, model)
     try:
         board = build_board(proj, history.players, teams=teams, adp=adp, season_games=games, positional=positional,
                             blend=blend)
