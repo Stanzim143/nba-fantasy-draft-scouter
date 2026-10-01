@@ -60,6 +60,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from src.contracts import data_dir, raw_dir, season_start
+from src.ingest.http_cache import _is_network_error
 from src.value.league import load_league
 
 BASE_URL = (
@@ -279,11 +280,35 @@ class ESPNLeagueClient:
             self._respect_rate_limit()
             self._last_request_at = self._clock()
             self.stats.network_requests += 1
-            resp = self._get_session().get(url, params=query, headers=hdrs, timeout=self.timeout)
+            try:
+                resp = self._get_session().get(url, params=query, headers=hdrs, timeout=self.timeout)
+            except Exception as exc:  # noqa: BLE001 - network layer: timeouts, resets, DNS, TLS ...
+                if not _is_network_error(exc):
+                    raise
+                self.stats.log.append({"views": list(views), "status": None, "attempt": attempt})
+                last_problem = f"{type(exc).__name__}: {exc}"
+                if attempt < self.max_retries:
+                    self.stats.retries += 1
+                    self._sleep(min(self.backoff_max, self.backoff_base ** (attempt + 1)))
+                    continue
+                raise ESPNLeagueError(
+                    f"league {league_id} season {season_id} views={views}: network error after "
+                    f"{self.max_retries + 1} attempts ({last_problem})") from exc
             status = resp.status_code
             self.stats.log.append({"views": list(views), "status": status, "attempt": attempt})
             if status == 200:
-                return resp.content
+                try:
+                    json.loads(resp.content)
+                    return resp.content
+                except ValueError as exc:    # an HTML/maintenance page served with 200
+                    last_problem = f"HTTP 200 with a non-JSON body: {exc}"
+                    if attempt < self.max_retries:
+                        self.stats.retries += 1
+                        self._sleep(min(self.backoff_max, self.backoff_base ** (attempt + 1)))
+                        continue
+                    raise ESPNLeagueError(
+                        f"league {league_id} season {season_id} views={views}: {last_problem} "
+                        f"(after {self.max_retries + 1} attempts)") from exc
             if status in (401, 403):
                 raise ESPNAuthError(
                     f"league {league_id} season {season_id} views={views}: HTTP {status}. This league is "
@@ -304,6 +329,11 @@ class ESPNLeagueClient:
             snippet = resp.content[:200].decode("utf-8", "replace") if resp.content else ""
             raise ESPNLeagueError(f"league {league_id} season {season_id} views={views}: HTTP {status}: {snippet}")
         raise ESPNLeagueError(f"views={views}: gave up after {self.max_retries + 1} attempts ({last_problem})")
+
+
+def _limit(v: Any) -> Any:
+    """ESPN's "no limit" is a negative number (or absent); a real 0 is a limit of zero, not "unlimited"."""
+    return None if v is None or v < 0 else v
 
 
 # --------------------------------------------------------------------------- fetch helpers
@@ -392,12 +422,12 @@ def parse_settings(payload: dict) -> dict:
         "acquisition": {
             "type": acq_s.get("acquisitionType"),
             "waiver_hours": acq_s.get("waiverHours"),
-            "season_limit": None if (acq_s.get("acquisitionLimit", -1) or -1) < 0 else acq_s.get("acquisitionLimit"),
+            "season_limit": _limit(acq_s.get("acquisitionLimit")),
             "matchup_limit": acq_s.get("matchupAcquisitionLimit"),
             "matchup_limit_per_scoring_period": acq_s.get("matchupLimitPerScoringPeriod"),
         },
         "trades": {
-            "limit": None if (trade_s.get("max", -1) or -1) < 0 else trade_s.get("max"),
+            "limit": _limit(trade_s.get("max")),
             "deadline_epoch_ms": trade_s.get("deadlineDate"),
             "review_hours": trade_s.get("revisionHours"),
             "votes_to_veto": trade_s.get("vetoVotesRequired"),

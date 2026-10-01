@@ -499,3 +499,33 @@ def test_cli_transactions_failure_is_a_warning_not_a_crash(tmp_path, capsys):
                  "--config", str(cfg_path)], client=client)
     assert rc == 0
     assert "warning" in capsys.readouterr().err.lower()
+
+
+def test_parse_settings_keeps_a_real_zero_limit():
+    s = el.parse_settings(make_settings_payload(trade_max=0, season_limit=0))
+    assert s["acquisition"]["season_limit"] == 0 and s["trades"]["limit"] == 0
+    s = el.parse_settings(make_settings_payload(trade_max=None, season_limit=None))
+    assert s["acquisition"]["season_limit"] is None and s["trades"]["limit"] is None
+
+
+def test_network_errors_are_retried_then_succeed(tmp_path):
+    payload = make_settings_payload()
+    client, session, _ = make_client(tmp_path, [ConnectionError("reset"), FakeResponse(200, payload)])
+    assert client.get(LEAGUE_ID, SEASON_ID, ["mSettings"]) == payload
+    assert len(session.calls) == 2 and client.stats.retries == 1
+
+
+def test_persistent_network_error_raises_league_error(tmp_path):
+    client, _, _ = make_client(tmp_path, [TimeoutError("slow")], max_retries=2)
+    with pytest.raises(el.ESPNLeagueError, match="network error"):
+        client.get(LEAGUE_ID, SEASON_ID, ["mSettings"])
+
+
+def test_non_json_200_is_retried_and_never_cached(tmp_path):
+    payload = make_settings_payload()
+    client, session, _ = make_client(tmp_path, [FakeResponse(200, b"<html>maintenance</html>"), FakeResponse(200, payload)])
+    assert client.get(LEAGUE_ID, SEASON_ID, ["mSettings"]) == payload
+    bad, _, _ = make_client(tmp_path / "b", [FakeResponse(200, b"<html>")], max_retries=1)
+    with pytest.raises(el.ESPNLeagueError, match="non-JSON"):
+        bad.get(LEAGUE_ID, SEASON_ID, ["mSettings"])
+    assert not bad.cache_path(LEAGUE_ID, SEASON_ID, ["mSettings"]).exists()
