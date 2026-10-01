@@ -116,3 +116,9 @@ Decisions:
    logged on) and `WakeToRun` stays false: waking a machine is governed by the power plan's wake-timer setting, not by this repo,
    and a surprise wake at 05:15 is not worth it. The machine must be on, awake and the user logged in around 15:30 and 05:15 NZDT on
    the 16th/17th; if it sleeps overnight, wake it before the draft and run `./dev schedule run-now --job daily` (about 20-30 minutes).
+
+## Note 2026-10-02: the clock time is confirmed
+
+The draft start is confirmed as **2026-10-17 07:00 NZDT = 2026-10-16T18:00Z = 20:00 CEST**, i.e. exactly the instant the schedule
+already planned against (the earlier "earliest plausible" start). `draft.start_utc` is unchanged, so the installed triggers and the
+final pre-draft runs (15:30 and 05:15 NZDT) stand and no reinstall is needed; only the "earliest/unknown" wording was removed.

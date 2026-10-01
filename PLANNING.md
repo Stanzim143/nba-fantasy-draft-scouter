@@ -33,7 +33,7 @@ Built in parallel across five tracks (each in its own git worktree, integrated o
 - **Repo tooling**: `./dev` (worktree create/remove/list, test, locked integrate, lint, ci) hardened with real integration tests; GitHub Actions CI (Ubuntu + Windows) and dependabot; `README.md`, `docs/architecture.md`, ADR index, `CONTRIBUTING.md`.
 
 **Open / not yet built:**
-- **Draft date SET 2026-09-26**: 2026-10-17 in the morning NZ time = the evening of 2026-10-16 CEST; earliest plausible start 2026-10-16 18:00 UTC = 07:00 NZDT (`config/league.yaml` `draft.*`; ADR 0014 note 2026-09-26). The exact clock time is not yet known.
+- **Draft date and time SET** (date 2026-09-26, clock time confirmed 2026-10-02): 2026-10-17 07:00 NZDT = 2026-10-16 18:00 UTC = 20:00 CEST (`config/league.yaml` `draft.*`; ADR 0014 notes 2026-09-26 and 2026-10-02).
 - **In-season nightly refresh of rest-of-season rankings and league alerts** (roadmap phase 5): BUILT 2026-09-25 (ADR 0018, `python -m src.ops.nightly`, task "NBA Fantasy 2026 Nightly In-Season", daily 09:30 local 2026-10-20 to 2027-04-06). Exercised live only before the season (all steps ran on 2026-09-25; the games step correctly skipped, no team configured); the incremental game ingest against the real stats.nba.com, the team artifacts on real rosters and the scheduled firing are unproven until opening night. Older text follows. The *pre-draft* daily refresh is done (ADR 0014, below), but it does not run the in-season pieces: no scheduled job invokes `ros`, `trade`, `waivers` or the schedule pull nightly, and no league-alert step (roster or waiver changes) exists; nothing can run live until the season starts; the rest-of-season projection, trade analyzer, waiver finder and schedule awareness are built (ADR 0015, below) but cannot run on a live season until it starts.
 
 **Resolved:**
@@ -84,7 +84,7 @@ Everything league-specific lives in `config/league.yaml` so the engine is reusab
 | Setting | Value |
 |---|---|
 | Teams / format | **13** (confirmed live against the real ESPN league, 2026-09-23), H2H Points, weekly matchups, 20 regular-season weeks, 8 playoff teams |
-| Draft | Snake, 90 s/pick, order set manually, pick trading allowed, **2026-10-17 morning NZ time** (set 2026-09-26; earliest plausible start 2026-10-16 18:00 UTC; exact clock time TBD — see section 1a and `config/league.yaml` `draft.*`) |
+| Draft | Snake, 90 s/pick, order set manually, pick trading allowed, **2026-10-17 morning NZ time** (set 2026-09-26; start 2026-10-16 18:00 UTC = 07:00 NZDT, confirmed 2026-10-02 — see section 1a and `config/league.yaml` `draft.*`) |
 | Starters (10) | PG, SG, SF, PF, C, G, F, UTIL x3 |
 | Bench / IR | 3 bench + 1 IR (13 rostered) |
 | Lineups | Daily, lock at each player's game time |
@@ -246,7 +246,7 @@ Start with simple, explainable models (regularized regression, gradient boosting
 
 - [x] Exact ESPN scoring settings (see section 2)
 - [x] Number of teams and roster slots: **14 teams** (13 managers + 1 placeholder; the live ESPN league reported 14 on 2026-09-30, it was 13 on 2026-09-23 and provisional at 10 before; the league is looking for a 14th manager), 10 starters + 3 bench + 1 IR
-- [x] Draft type: snake, date **2026-10-17 morning NZ time** (set 2026-09-26; exact clock time still TBD)
+- [x] Draft type: snake, date **2026-10-17 morning NZ time** (set 2026-09-26; clock time 07:00 NZDT confirmed 2026-10-02)
 - [x] Acquisition limits: 7 per matchup, no season cap
 - [x] Keeper or dynasty rules: none
 - [x] UI choice: **Streamlit**. Plugs directly into the existing pandas/DuckDB stack with no separate API layer, gets a usable draft-day tool built fast against an unscheduled draft date. Next.js would look more polished for the portfolio but costs much more build time for what is, day to day, a single-user tool — revisit post-draft if the polish is worth it then.

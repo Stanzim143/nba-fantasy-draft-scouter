@@ -26,12 +26,12 @@ fallers, players newly on or off the watchlist, new preseason games, new league 
 | Read the latest report | open `reports/daily/latest.md` (a dated copy is in `reports/daily/<date>.md`) |
 | Is it healthy? | `./dev schedule status` (task state, last/next run, last result, alert) and `~/dev-data/nba-fantasy-2026/daily_refresh/status.json` |
 | Run it right now | `./dev schedule run-now` (via Task Scheduler) or `python -m src.ops.daily_refresh --force` |
-| Change the draft date or time | edit `draft.date` / `draft.start_utc` in `config/league.yaml` (currently 2026-10-17, earliest start 2026-10-16T18:00Z = 07:00 NZDT), then re-run `./dev schedule install --job daily` from the primary checkout; `--draft-date`, `--draft-start`, `NBA_DRAFT_DATE`, `NBA_DRAFT_START` or `draft_date`/`draft_start` in `~/dev-data/nba-fantasy-2026/daily_refresh.json` override the config |
+| Change the draft date or time | edit `draft.date` / `draft.start_utc` in `config/league.yaml` (currently 2026-10-17, start 2026-10-16T18:00Z = 07:00 NZDT), then re-run `./dev schedule install --job daily` from the primary checkout; `--draft-date`, `--draft-start`, `NBA_DRAFT_DATE`, `NBA_DRAFT_START` or `draft_date`/`draft_start` in `~/dev-data/nba-fantasy-2026/daily_refresh.json` override the config |
 | Turn it off | `./dev schedule remove` (or Task Scheduler, task "NBA Fantasy 2026 Daily Refresh", Disable) |
 
 It only runs while the computer is on and you are logged in (missed runs catch up when it wakes). If it fails twice in a row or the
 data goes stale you get `reports/daily/ALERT.txt` and a Windows notification; the log is
-`~/dev-data/nba-fantasy-2026/daily_refresh/logs/daily_refresh.log`. The draft date and earliest start come from `config/league.yaml`; the task stops firing at that start (2026-10-17 07:00 NZDT) and a stray later run does nothing.
+`~/dev-data/nba-fantasy-2026/daily_refresh/logs/daily_refresh.log`. The draft date and start come from `config/league.yaml`; the task stops firing at that start (2026-10-17 07:00 NZDT) and a stray later run does nothing.
 
 ### Handoff to the nightly job (ADR 0018)
 
@@ -67,7 +67,7 @@ How to read the new columns:
 
 ## Draft-day runbook (draft 2026-10-17 morning NZ = 2026-10-16 evening CEST)
 
-Timeline (earliest plausible start 2026-10-16 18:00 UTC; the real start is somewhere in 18:00-20:00 UTC, i.e. 07:00-09:00 NZDT):
+Timeline (confirmed start 2026-10-16 18:00 UTC = 07:00 NZDT):
 
 | Event | NZDT (UTC+13) | UTC | CEST (UTC+2) |
 |---|---|---|---|
@@ -75,7 +75,7 @@ Timeline (earliest plausible start 2026-10-16 18:00 UTC; the real start is somew
 | Last full US preseason night that counts: games of Thu 2026-10-15 (US), east coast final about | Fri 10-16 15:00 | 10-16 02:00 | 10-16 04:00 |
 | Final run 1 (after the east-coast games) | Fri 10-16 15:30 | 10-16 02:30 | 10-16 04:30 |
 | Daily run (west-coast games final about 18:30 NZDT) | Fri 10-16 19:00 | 10-16 06:00 | 10-16 08:00 |
-| **Final pre-draft run** (105 min before the earliest start) | Sat 10-17 05:15 | Fri 10-16 16:15 | Fri 10-16 18:15 |
+| **Final pre-draft run** (105 min before the start) | Sat 10-17 05:15 | Fri 10-16 16:15 | Fri 10-16 18:15 |
 | You: read `reports/daily/latest.md`, open the app, load the board | Sat 10-17 05:30-06:45 | 10-16 16:30-17:45 | 10-16 18:30-19:45 |
 | **Earliest plausible draft start**; scheduled runs end here | Sat 10-17 07:00 | Fri 10-16 18:00 | Fri 10-16 20:00 |
 | Latest plausible draft start | Sat 10-17 09:00 | Fri 10-16 20:00 | Fri 10-16 22:00 |

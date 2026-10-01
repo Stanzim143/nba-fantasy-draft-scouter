@@ -14,9 +14,8 @@ league:
     date: 2026-10-17           # local calendar date in `timezone` (set 2026-09-26, user: "the draft is on 2026-10-17 in the
                                # morning NZ time"). That is the EVENING of 2026-10-16 in CET/CEST (UTC+2).
     timezone: Pacific/Auckland # NZDT = UTC+13 from 2026-09-27; CEST (UTC+2) until 2026-10-25
-    start_utc: "2026-10-16T18:00:00Z"   # EARLIEST plausible start = 07:00 NZDT 2026-10-17 = 20:00 CEST 2026-10-16. The exact
-                               # clock time is not known (consistent window ~18:00-20:00Z); the pre-draft refresh schedule
-                               # (ADR 0014) plans against this earliest instant. Refine when the manager confirms the time.
+    start_utc: "2026-10-16T18:00:00Z"   # CONFIRMED start (2026-10-02) = 07:00 NZDT 2026-10-17 = 20:00 CEST 2026-10-16. The pre-draft
+                               # refresh schedule (ADR 0014) plans against this instant.
     seconds_per_pick: 90
     order: manual              # set by league manager
     pick_trading: true

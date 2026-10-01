@@ -33,7 +33,7 @@ def render_report(run: Mapping[str, Any]) -> str:
                f" | {run.get('seconds', 0):.0f}s{countdown}")
     hours = run.get("hours_to_draft")
     if run.get("draft_start") and hours is not None:
-        out.append(f"\nDraft start (earliest plausible): {run['draft_start']}; " + (
+        out.append(f"\nDraft start: {run['draft_start']}; " + (
             f"{hours:.1f} h from the start of this run." if hours > 0 else "it has already started."))
     if run.get("draft_date_source") == "fallback":
         out.append(f"\nNote: no draft date is set, assuming the latest plausible one ({draft}). Set `draft.date` in `config/league.yaml`, or use "

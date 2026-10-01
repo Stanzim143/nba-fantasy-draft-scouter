@@ -75,7 +75,7 @@ class Settings:
     window_start: date
     window_end: date
     league_id: int | None = None
-    draft_start: datetime | None = None           # tz-aware instant of the (earliest plausible) draft start, if known
+    draft_start: datetime | None = None           # tz-aware instant of the draft start, if known
     draft_tz: str = DEFAULT_DRAFT_TZ
     offline: bool = False
     budget_s: float = 45 * 60
@@ -910,7 +910,7 @@ def _start_text(s: Settings, now: datetime | None) -> str:
     from zoneinfo import ZoneInfo
 
     loc = s.draft_start.astimezone(ZoneInfo(s.draft_tz))
-    txt = f", earliest start {s.draft_start.astimezone(timezone.utc):%Y-%m-%d %H:%M}Z = {loc:%Y-%m-%d %H:%M} {s.draft_tz}"
+    txt = f", start {s.draft_start.astimezone(timezone.utc):%Y-%m-%d %H:%M}Z = {loc:%Y-%m-%d %H:%M} {s.draft_tz}"
     h = hours_to_draft(s, now) if now else None
     return txt + ("" if h is None else f", {h:.1f} h from now" if h > 0 else ", already started")
 

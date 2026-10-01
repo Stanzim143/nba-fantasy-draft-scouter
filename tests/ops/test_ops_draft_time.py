@@ -13,7 +13,7 @@ from src.ops import schedule as sc
 NZ = ZoneInfo("Pacific/Auckland")
 CET = ZoneInfo("Europe/Berlin")
 UTC = timezone.utc
-START = datetime(2026, 10, 16, 18, 0, tzinfo=UTC)          # earliest plausible draft start
+START = datetime(2026, 10, 16, 18, 0, tzinfo=UTC)          # confirmed draft start
 NS = {"t": "http://schemas.microsoft.com/windows/2004/02/mit/task"}
 
 
@@ -150,7 +150,7 @@ def test_main_skips_after_the_draft_starts_and_reports_days_and_hours(tmp_path):
     assert dr.main(argv, runner=runner, now=datetime(2026, 10, 17, 7, 30, tzinfo=NZ), env={}) == 0 and calls == []
     assert dr.main(argv, runner=runner, now=datetime(2026, 10, 17, 5, 15, tzinfo=NZ), env={}) == 0 and calls
     latest = (tmp_path / "r" / "latest.md").read_text(encoding="utf-8")
-    assert "DRAFT DAY" in latest and "Draft start (earliest plausible)" in latest and "1.8 h from the start" in latest
+    assert "DRAFT DAY" in latest and "Draft start:" in latest and "1.8 h from the start" in latest
 
 
 # ------------------------------------------------------------------ installed triggers
