@@ -183,3 +183,15 @@ def test_with_extras_flag_adds_the_extra_steps(monkeypatch, tmp_path):
     monkeypatch.setattr(pr, "step_coaches", lambda *a, **k: calls.append("coaches") or {"teams": 30, "coaches": {}})
     assert pr.main(["--season", SEASON, "--with-extras", "--data-dir", str(tmp_path)], **clients()) == 0
     assert calls == ["roster", "offseason", "adp", "profiles", "status", "transactions", "coaches"]
+
+
+def test_main_puts_the_espn_and_fantasypros_cache_under_data_dir(monkeypatch, tmp_path):
+    seen = {}
+
+    def fake_refresh(season, base, *, nba, espn, fp, steps):
+        seen.update(espn=espn.cache_dir, fp=fp.cache_dir, wiki=None)
+        return []
+
+    monkeypatch.setattr(pr, "run_refresh", fake_refresh)
+    pr.main(["--season", SEASON, "--data-dir", str(tmp_path), "--offline"])
+    assert seen["espn"] == tmp_path / "raw" / "espn" and seen["fp"] == tmp_path / "raw" / "fantasypros"
