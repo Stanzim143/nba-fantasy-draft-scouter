@@ -16,7 +16,7 @@ league:
     timezone: Pacific/Auckland # NZDT = UTC+13 from 2026-09-27; CEST (UTC+2) until 2026-10-25
     start_utc: "2026-10-16T18:00:00Z"   # CONFIRMED start (2026-10-02) = 07:00 NZDT 2026-10-17 = 20:00 CEST 2026-10-16. The pre-draft
                                # refresh schedule (ADR 0014) plans against this instant.
-    seconds_per_pick: 90
+    seconds_per_pick: 120
     order: manual              # set by league manager
     pick_trading: true
   roster:
@@ -42,11 +42,11 @@ league:
     limit: null
     deadline: 2027-03-13
     review_days: 2
-    votes_to_veto: 4
+    votes_to_veto: 5
   keepers: false
   schedule:
     weeks_per_matchup: 1
-    regular_season_matchups: 20
+    regular_season_matchups: 19
     playoff_teams: 8
     playoff_rounds_weeks: [1, 1, 1]
     playoff_reseeding: false

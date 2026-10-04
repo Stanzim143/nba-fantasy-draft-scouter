@@ -84,7 +84,7 @@ Everything league-specific lives in `config/league.yaml` so the engine is reusab
 | Setting | Value |
 |---|---|
 | Teams / format | **13** (confirmed live against the real ESPN league, 2026-09-23), H2H Points, weekly matchups, 20 regular-season weeks, 8 playoff teams |
-| Draft | Snake, 90 s/pick, order set manually, pick trading allowed, **2026-10-17 morning NZ time** (set 2026-09-26; start 2026-10-16 18:00 UTC = 07:00 NZDT, confirmed 2026-10-02 — see section 1a and `config/league.yaml` `draft.*`) |
+| Draft | Snake, 120 s/pick, order set manually, pick trading allowed, **2026-10-17 morning NZ time** (set 2026-09-26; start 2026-10-16 18:00 UTC = 07:00 NZDT, confirmed 2026-10-02 — see section 1a and `config/league.yaml` `draft.*`) |
 | Starters (10) | PG, SG, SF, PF, C, G, F, UTIL x3 |
 | Bench / IR | 3 bench + 1 IR (13 rostered) |
 | Lineups | Daily, lock at each player's game time |

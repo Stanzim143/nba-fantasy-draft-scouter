@@ -60,7 +60,7 @@ Source: `config/league.yaml` (ESPN league "Example League", H2H points, 14 teams
 | Starting slots | PG 1, SG 1, SF 1, PF 1, C 1, G 1 (PG or SG), F 1 (SF or PF), UTIL 3 = **10** | lines 26-34 |
 | Bench / IR | 3 / 1 (IR is extra, not counted in the 13) | lines 35-36 |
 | Roster size | 13 | line 25 |
-| Draft | snake, 90 s a pick, 2026-10-17 morning NZ | `draft:` block |
+| Draft | snake, 120 s a pick, 2026-10-17 morning NZ | `draft:` block |
 
 **Points formula** (weights `config/league.yaml:58-69`, applied by `fantasy_points`, `src/value/points.py:9`, and its DataFrame twin
 `fantasy_points_frame`, `src/value/frame.py:11`; column mapping `STAT_COLUMN_MAP`, `src/contracts.py:62`):

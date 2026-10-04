@@ -40,9 +40,9 @@ def test_stored_espn_schedule_is_eighty_games_per_team_and_matches_the_league_sh
     assert len(per) == 30 and per.min() == per.max() == 80
     cal = build_calendar(sch, "2026-27", cfg=load_league())
     if cal.source == "derived":
-        assert len(cal.weeks) == 23 and str(cal.last_day) == "2027-04-04"   # ESPN's finalScoringPeriod 167
+        assert len(cal.weeks) == 22 and str(cal.last_day) == "2027-03-28"   # 19 regular + 3 playoff weeks; ESPN finalScoringPeriod 160 (was 167 before the league went to 19 matchups)
     wk = weekly_team_table(sch, cal, "2026-09-24")
-    assert 2200 < wk["games"].sum() <= 2400   # the fantasy season ends before the last NBA week
+    assert 2100 < wk["games"].sum() <= 2400   # 22 fantasy weeks end before the last NBA weeks (30 teams x 80 games = 2400)
 
 
 def test_realised_2025_26_schedule_rebuilt_from_team_games_is_complete():
