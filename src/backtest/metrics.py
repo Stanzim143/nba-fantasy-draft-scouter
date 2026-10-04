@@ -235,7 +235,10 @@ class Bootstrap:
     """Percentile-bootstrap summary of a statistic.
 
     ``p_le_zero`` is the one-sided bootstrap p-value that the statistic is <= 0
-    ((1 + #{boot <= 0}) / (n_boot + 1)); it is meaningful for paired *differences* (lift).
+    ((1 + #{boot <= 0}) / (n_boot + 1)); it is meaningful for paired *differences* (lift). It is the share of replicates of
+    the *observed* statistic at or below zero, not a p-value from a null-centred (permutation-style) distribution, and no
+    multiplicity correction is applied across the many metrics and variants a report tests: read it as a rough ordering of
+    evidence, with the CI and the seasons-won count, not as a calibrated significance level.
     """
     estimate: float
     lo: float
@@ -246,6 +249,11 @@ class Bootstrap:
     n_groups: int
 
 
+def is_rank_metric(name: str) -> bool:
+    """Top-K hit / capture and NDCG: metrics where a player resampled twice would fill several of the K slots."""
+    return bool(re.match(r"^(top\d+_|ndcg)", name))
+
+
 def bootstrap_groups(
     groups: Sequence[Sequence[np.ndarray]],
     stat: Callable[[Sequence[np.ndarray]], float],
@@ -253,8 +261,17 @@ def bootstrap_groups(
     n_boot: int = 1000,
     seed: int = 0,
     level: float = 0.95,
+    resample: str = "players",
 ) -> Bootstrap:
-    """Bootstrap over players, stratified by group (season), of the mean-over-groups of ``stat``.
+    """Bootstrap of the mean-over-groups of ``stat``; ``resample`` picks the unit (default: players within each group).
+
+    ``resample="groups"`` resamples whole groups (seasons) with replacement instead and averages their (precomputed)
+    ``stat`` values. Use it for top-K / capture / NDCG metrics: with player-level resampling a player drawn twice
+    appears as duplicate rows that can fill several of the K slots, which distorts the metric; resampling seasons keeps
+    every group's player set intact (at the price of a coarse, honest interval when there are few seasons). With fewer
+    than three non-empty groups it falls back to resampling players.
+
+    Player-level (default): stratified by group (season).
 
     ``groups[g]`` is a tuple of equal-length arrays (e.g. ``(pred, actual)``).  Each replicate
     resamples every group's rows with replacement (same row indices for every array in the
@@ -265,10 +282,19 @@ def bootstrap_groups(
         raise ValueError("n_boot must be >= 1")
     if not 0 < level < 1:
         raise ValueError("level must be in (0, 1)")
+    if resample not in ("players", "groups"):
+        raise ValueError("resample must be 'players' or 'groups'")
     arrs = [[np.asarray(x) for x in g] for g in groups]
     est_vals = [stat(g) for g in arrs]
     estimate = float(np.nanmean(est_vals)) if any(not np.isnan(v) for v in est_vals) else float("nan")
     rng = np.random.default_rng(seed)
+    if resample == "groups" and sum(1 for g in arrs if len(g[0])) >= 3:
+        ev = np.asarray(est_vals, float)
+        pick = rng.integers(0, len(ev), size=(n_boot, len(ev)))
+        vals = ev[pick]
+        cnt = (~np.isnan(vals)).sum(axis=1)
+        reps = np.where(cnt > 0, np.nansum(vals, axis=1) / np.maximum(cnt, 1), np.nan)
+        return _summarise(reps, estimate, n_boot, len(arrs), level)
     idx = [rng.integers(0, len(g[0]), size=(n_boot, len(g[0]))) if len(g[0]) else None for g in arrs]
     reps = np.full(n_boot, np.nan)
     for b in range(n_boot):
@@ -281,14 +307,18 @@ def bootstrap_groups(
                 vals.append(v)
         if vals:
             reps[b] = np.mean(vals)
+    return _summarise(reps, estimate, n_boot, len(arrs), level)
+
+
+def _summarise(reps: np.ndarray, estimate: float, n_boot: int, n_groups: int, level: float) -> Bootstrap:
     ok = reps[~np.isnan(reps)]
     if len(ok) < 2:
         nan = float("nan")
-        return Bootstrap(estimate, nan, nan, nan, nan, n_boot, len(arrs))
+        return Bootstrap(estimate, nan, nan, nan, nan, n_boot, n_groups)
     alpha = (1 - level) / 2
     lo, hi = np.quantile(ok, [alpha, 1 - alpha])
     p = (1 + int((ok <= 0).sum())) / (len(ok) + 1)
-    return Bootstrap(estimate, float(lo), float(hi), float(ok.std(ddof=1)), float(p), n_boot, len(arrs))
+    return Bootstrap(estimate, float(lo), float(hi), float(ok.std(ddof=1)), float(p), n_boot, n_groups)
 
 
 def bootstrap_ci(pred, actual, metric: Callable[[np.ndarray, np.ndarray], float], *,

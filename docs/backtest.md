@@ -126,7 +126,9 @@ error, so it is not done.
 
 * **Bootstrap CI** (`BacktestResult.summary_ci`): percentile bootstrap over players, stratified by
   season (each replicate resamples every season's players and averages the per-season metric).
-  Deterministic given `seed`.
+  Deterministic given `seed`. Top-K hit / capture and NDCG metrics are instead bootstrapped over **seasons**
+  (whole player sets intact): a player resampled twice would fill several of the K slots. That interval is coarse
+  with ~10 seasons, deliberately so.
 * **Caveat:** players are resampled independently although the same player recurs across seasons and
   a season's shocks (a rule change, one superstar's injury) are shared, so the CIs capture player
   sampling noise only and are optimistic. Read them together with the per-season table: a lift that
@@ -145,6 +147,8 @@ the **lift over the previous variant** with a paired, season-stratified bootstra
 * the paired comparison uses players projected by **both** variants, so both are scored on identical
   rows; differences in coverage show in the un-paired columns (`top{K}_hit`, `n_coverage_miss`) but
   not in the lift;
+* the p-value is the share of bootstrap replicates of the observed lift at or below zero (not null-centred) and is
+  uncorrected for multiplicity;
 * several layers and several metrics are tested, so some "significant" results will be chance:
   prefer lifts that are consistent across metrics and seasons. The contract layer was a stated
   hypothesis; keep it only if it earns a consistent `improves`. It did not (ADR 0013): a CI that excludes zero

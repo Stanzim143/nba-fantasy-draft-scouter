@@ -325,3 +325,25 @@ def test_metric_orientation_helper():
     assert M.metric_higher_is_better("mae_gp") is False
     assert M.metric_higher_is_better("bias_total_fp") is None
     assert M.metric_higher_is_better("top100_unprojected") is None
+
+
+def test_season_level_bootstrap_resamples_whole_groups_and_is_deterministic():
+    rng = np.random.default_rng(2)
+    g = [(rng.normal(size=60), rng.normal(size=60)) for _ in range(8)]
+    stat = lambda x: M.topk_overlap(x[0], x[1], 10)  # noqa: E731
+    a = M.bootstrap_groups(g, stat, n_boot=200, seed=1, resample="groups")
+    b = M.bootstrap_groups(g, stat, n_boot=200, seed=1, resample="groups")
+    assert a == b and a.n_groups == 8 and a.lo <= a.estimate <= a.hi
+    per_season = [stat(x) for x in g]
+    assert min(per_season) - 1e-12 <= a.lo and a.hi <= max(per_season) + 1e-12   # replicates are means of whole seasons only
+    few = M.bootstrap_groups(g[:2], stat, n_boot=50, seed=1, resample="groups")  # < 3 groups falls back to players
+    assert not math.isnan(few.estimate)
+    with pytest.raises(ValueError):
+        M.bootstrap_groups(g, stat, resample="rows")
+
+
+def test_rank_metrics_are_identified_by_name():
+    for n in ("top50_hit", "top12_capture", "ndcg_100"):
+        assert M.is_rank_metric(n)
+    for n in ("spearman_total_fp", "mae_total_fp", "vorp_weighted_mae"):
+        assert not M.is_rank_metric(n)

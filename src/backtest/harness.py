@@ -183,7 +183,8 @@ class BacktestResult:
             else:
                 def stat(g, fn=spec.fn):
                     return fn(g[0], g[1])
-            b = M.bootstrap_groups(groups, stat, n_boot=n_boot, seed=seed, level=level)
+            b = M.bootstrap_groups(groups, stat, n_boot=n_boot, seed=seed, level=level,
+                                   resample="groups" if M.is_rank_metric(name) else "players")
             rows[name] = {"estimate": b.estimate, "lo": b.lo, "hi": b.hi, "se": b.se}
         return pd.DataFrame(rows).T
 

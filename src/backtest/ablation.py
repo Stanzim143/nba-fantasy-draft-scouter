@@ -19,6 +19,11 @@ lift always means "better" (error metrics are sign-flipped).
   the seasons compared (a resampling-free sanity check on consistency).
 * Verdict: ``improves`` if the CI is entirely above 0, ``hurts`` if entirely below, otherwise
   ``no significant change``.
+* Rank metrics (``top{K}_hit``, ``top{K}_capture``, ``ndcg_K``) are bootstrapped over *seasons* instead of players: a
+  player resampled twice would fill several of the K slots and distort the metric, so the whole season (player set intact)
+  is the resampling unit. With ~10 seasons that interval is coarse but honest; the other metrics resample players.
+* ``lift_*_p`` is the share of bootstrap replicates of the observed lift at or below zero, not a null-centred p-value, and
+  is not corrected for the many metrics and variants tested.
 * Caveats (see docs/backtest.md): players are resampled independently although the same player
   appears in several seasons and layers are compared sequentially (multiple comparisons), so treat
   CIs as optimistic; consistency across seasons (``wins``) matters as much as the p-value.
@@ -105,7 +110,8 @@ def paired_lift(a: BacktestResult, b: BacktestResult, metric: str, *, n_boot: in
         fn = _fn_for(metric, ks, float(g[3][0]) if len(g[3]) else 0.0)
         return sign * (fn(g[1], g[2]) - fn(g[0], g[2]))
 
-    boot = M.bootstrap_groups(groups, stat, n_boot=n_boot, seed=seed, level=level)
+    boot = M.bootstrap_groups(groups, stat, n_boot=n_boot, seed=seed, level=level,
+                              resample="groups" if M.is_rank_metric(metric) else "players")
     pt = np.array(point)
     ok = ~np.isnan(pt)
     return PairedLift(metric, boot.estimate, boot.lo, boot.hi, boot.p_le_zero,
