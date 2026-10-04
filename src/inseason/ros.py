@@ -171,6 +171,10 @@ def build_ros(tables, season: str, as_of, *, prior: pd.DataFrame | None = None, 
         from src.inseason.schedule import games_remaining
 
         left_by_team = games_remaining(sch, as_of_ts)
+        # a team with no game after as_of has 0 left (not unknown): reindex over every scheduled team so only
+        # players with an unknown team id reach the median fallback below
+        all_teams = pd.unique(pd.concat([sch["home_team_id"], sch["away_team_id"]]).dropna())
+        left_by_team = left_by_team.reindex(all_teams.astype(left_by_team.index.dtype, copy=False), fill_value=0)
         left = pd.Series(df["team_id"].to_numpy()).map(left_by_team).to_numpy(float)
     else:
         left = np.maximum(season_games - tgp, 0.0)

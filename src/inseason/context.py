@@ -69,7 +69,7 @@ def load_tables(season: str, data_root: Path | None, synthetic: bool) -> dict:
 
 
 def _schedule_for(tables: dict, season: str, data_root: Path | None, notes: list[str], *,
-                  use_store: bool = True) -> pd.DataFrame | None:
+                  use_store: bool = True, as_of: pd.Timestamp | None = None) -> pd.DataFrame | None:
     if use_store:
         try:
             sch = read_schedule(data_root, season)
@@ -79,7 +79,11 @@ def _schedule_for(tables: dict, season: str, data_root: Path | None, notes: list
             pass
     tg = tables["team_games"]
     tgs = tg[tg["season"] == season]
-    finished = len(tgs) and pd.Timestamp(tgs["game_date"].max()) < pd.Timestamp.today().normalize() - pd.Timedelta(days=30)
+    # Judged against ``as_of`` (never the wall clock, so a replay is reproducible): complete when the table already holds
+    # games after ``as_of`` (a replay of a finished season) or its last game is over a month before ``as_of``.
+    last = pd.Timestamp(tgs["game_date"].max()) if len(tgs) else None
+    ref = pd.Timestamp(as_of).normalize() if as_of is not None else pd.Timestamp.today().normalize()
+    finished = last is not None and (last > ref or last < ref - pd.Timedelta(days=30))
     if finished:  # a finished season: its realised team_games are its schedule; a live one's are only the games so far
         try:
             notes.append(f"no stored schedule_games for {season}; using the realised team_games schedule "
@@ -193,7 +197,7 @@ def load_context(season: str | None = None, as_of=None, *, model: str = "baselin
     as_of_ts = pd.Timestamp(as_of if as_of is not None else pd.Timestamp.today().normalize())
     notes: list[str] = []
     tables = tables if tables is not None else load_tables(season, data_dir, synthetic)
-    schedule = _schedule_for(tables, season, data_dir, notes, use_store=not synthetic)
+    schedule = _schedule_for(tables, season, data_dir, notes, use_store=not synthetic, as_of=as_of_ts)
     teams = _teams_series(tables, season, as_of_ts, data_dir, use_store=not synthetic)
     try:
         ros = build_ros(tables, season, as_of_ts, prior=prior, model=model, cfg=cfg, schedule=schedule,

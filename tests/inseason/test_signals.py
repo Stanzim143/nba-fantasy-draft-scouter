@@ -127,3 +127,22 @@ def test_event_study_on_the_synthetic_league_runs_and_summarises():
     s = G.summarize_rule(ev)
     assert s["pairs"] == len(ev) and np.isfinite(s["mean_actual_all"])
     assert G.summarize_rule(pd.DataFrame()) == {}
+
+
+def test_latest_team_does_not_depend_on_row_order():
+    other = 1610612738
+    gl, tg = _logs({7: lambda g: 30 if g < 12 else 0, 3: lambda g: 25})
+    gl.loc[(gl["player_id"] == 7) & (gl["game_date"] < pd.Timestamp("2023-11-06")), "team_id"] = other   # traded after game 5
+    tg_b = tg.assign(team_id=other, game_id=tg["game_id"] + "b")
+    tg_all = pd.concat([tg, tg_b], ignore_index=True)
+    shuffled = gl.sample(frac=1.0, random_state=3).reset_index(drop=True)
+    a = G.absent_players(shuffled, tg_all).set_index("player_id")
+    b = G.absent_players(gl, tg_all).set_index("player_id")
+    assert a.at[7, "team_id"] == TEAM == b.at[7, "team_id"]
+
+
+def test_with_without_ignores_games_before_the_player_joined_the_team():
+    gl, tg = _logs({1: lambda g: 30 if 10 <= g < 16 else 0, 3: lambda g: 25 if g % 2 else 21})
+    gl = gl[~((gl["player_id"] == 1) & (gl["game_date"] < pd.Timestamp("2023-11-11")))]
+    _, n_out = G._with_without(gl, tg, 1)
+    assert n_out == 4                        # games 16-19, not the ten from before he arrived

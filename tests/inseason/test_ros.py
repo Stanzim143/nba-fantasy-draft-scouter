@@ -93,6 +93,15 @@ def test_games_remaining_from_a_schedule_match_the_calendar(tables, prior, as_of
     assert with_sched["team_games_left"].between(0, 40).all() and without["team_games_left"].between(0, 40).all()
 
 
+def test_teams_with_no_games_left_have_zero_not_a_phantom_median(tables, prior):
+    sch = from_team_games(tables["team_games"], SEASON)
+    end = pd.Timestamp(tables["team_games"]["game_date"].max()) + pd.Timedelta(days=1)
+    ros = _ros(tables, prior, end, params=RosParams(), schedule=sch)
+    known = ros.dropna(subset=["team_id"])
+    assert len(known) and (known["team_games_left"] == 0).all()
+    assert (known["ros_games"] == 0).all()
+
+
 def test_value_columns_and_ordering(tables, prior, as_of):
     ros = _ros(tables, prior, as_of, params=RosParams())
     assert ros["ros_rank"].tolist() == list(range(1, len(ros) + 1))

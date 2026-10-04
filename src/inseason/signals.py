@@ -83,10 +83,16 @@ def trend_signals(gl: pd.DataFrame, *, window: int = WINDOW, min_base: int = MIN
     return out.reset_index()[cols]
 
 
+def _chronological(gl: pd.DataFrame) -> pd.DataFrame:
+    """Game logs in (game_date, game_id) order, so ``groupby(...).agg(team_id="last")`` is the player's *latest* team."""
+    return gl.sort_values(["game_date", "game_id"], kind="mergesort") if len(gl) else gl
+
+
 def absent_players(gl: pd.DataFrame, tg: pd.DataFrame, *, injuries: pd.Series | None = None,
                    min_mpg: float = ROTATION_MPG, min_games: int = MIN_BASE_GAMES) -> pd.DataFrame:
     """Rotation players not playing now: ``player_id, team_id, mpg, gp, streak, long_term, source``."""
     rows = []
+    gl = _chronological(gl)
     if len(gl):
         per = gl.groupby("player_id").agg(mpg=("min", "mean"), gp=("game_id", "size"), last=("game_date", "max"),
                                           team_id=("team_id", "last"))
@@ -114,6 +120,9 @@ def absent_players(gl: pd.DataFrame, tg: pd.DataFrame, *, injuries: pd.Series | 
 
 def _with_without(gl: pd.DataFrame, tg_team: pd.DataFrame, out_pid: int) -> tuple[pd.Series, int]:
     """Teammate mean minutes in team games the absent player missed minus games he played (this season)."""
+    first = gl.loc[(gl["player_id"] == out_pid) & (gl["team_id"] == tg_team["team_id"].iloc[0]), "game_date"].min()         if len(tg_team) else pd.NaT
+    if pd.notna(first):    # games before he joined this team (a trade) are not games he missed
+        tg_team = tg_team[pd.to_datetime(tg_team["game_date"]) >= pd.Timestamp(first)]
     team_games = tg_team["game_id"].unique()
     played = set(gl.loc[gl["player_id"] == out_pid, "game_id"])
     out_games = [g for g in team_games if g not in played]
@@ -156,6 +165,7 @@ def beneficiaries(gl: pd.DataFrame, tg: pd.DataFrame, absent: pd.DataFrame, posi
     cols = ["player_id", "team_id", "out_player_id", "freed_mpg", "gain_mpg", "gain_fppg", "method"]
     if absent.empty or gl.empty:
         return pd.DataFrame(columns=cols)
+    gl = _chronological(gl)
     per = gl.groupby("player_id").agg(mpg=("min", "mean"), gp=("game_id", "size"), team_id=("team_id", "last"))
     per["group"] = [position_group(p) for p in positions.reindex(per.index)]
     out_rows = []
@@ -192,7 +202,7 @@ def evaluate_rule(tables, seasons: list[str], *, min_star_mpg: float = 25.0, min
     pos = players.drop_duplicates("player_id").set_index("player_id")["position"]
     rows = []
     for season in seasons:
-        gl = gl_all[gl_all["season"] == season]
+        gl = _chronological(gl_all[gl_all["season"] == season])
         tg = tg_all[tg_all["season"] == season]
         per = gl.groupby("player_id").agg(mpg=("min", "mean"), gp=("game_id", "size"), team_id=("team_id", "last"))
         per["group"] = [position_group(p) for p in pos.reindex(per.index)]

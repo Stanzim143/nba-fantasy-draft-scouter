@@ -297,3 +297,16 @@ def test_waivers_cli_end_to_end(cli_env, capsys, as_of):
     assert rc == 0 and "Waiver finder" in out and "Streaming candidates" in out
     rc = W.main(["--synthetic", "--season", SEASON, "--as-of", str(as_of.date())])
     assert rc == 2 and "error:" in capsys.readouterr().err
+
+
+def test_schedule_finished_check_follows_as_of_not_the_wall_clock(tables):
+    from src.inseason.context import _schedule_for
+    tg = tables["team_games"]
+    last = pd.Timestamp(tg[tg["season"] == SEASON]["game_date"].max())
+    notes: list[str] = []
+    live = _schedule_for(tables, SEASON, None, notes, use_store=False, as_of=last + pd.Timedelta(days=3))
+    assert live is None                                      # the season only just ended as of that date: still "live"
+    done = _schedule_for(tables, SEASON, None, notes, use_store=False, as_of=last + pd.Timedelta(days=90))
+    assert done is not None and len(done)
+    replay = _schedule_for(tables, SEASON, None, [], use_store=False, as_of=last - pd.Timedelta(days=60))
+    assert replay is not None                                # table holds games after as_of: a replay of a finished season
