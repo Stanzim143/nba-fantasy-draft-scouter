@@ -385,3 +385,19 @@ def test_validate_payload_accepts_both_result_set_spellings():
         validate_payload({"other": 1})
     with pytest.raises(nc.NBAResponseError):
         validate_payload([])
+
+
+def test_every_http_cache_label_maps_to_one_url():
+    """The cache key omits the URL (see cache_key), so a label must never be reused for a second URL."""
+    import ast
+    import pathlib
+    seen: dict[str, set[str]] = {}
+    for path in pathlib.Path("src").rglob("*.py"):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Call) and getattr(node.func, "attr", "") in ("get_json", "get_text") and len(node.args) >= 2:
+                label, url = node.args[0], node.args[1]
+                if isinstance(label, ast.Constant) and isinstance(label.value, str):
+                    seen.setdefault(label.value, set()).add(ast.unparse(url))
+    assert seen, "scan found no get_json/get_text calls: the guard is vacuous"
+    clashes = {k: v for k, v in seen.items() if len(v) > 1}
+    assert not clashes, clashes

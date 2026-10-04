@@ -75,7 +75,12 @@ def _canonical_params(params: Mapping[str, Any]) -> dict[str, str]:
 
 
 def cache_key(label: str, params: Mapping[str, Any]) -> str:
-    """Stable, filesystem-safe, human-skimmable file stem for (label, params)."""
+    """Stable, filesystem-safe, human-skimmable file stem for (label, params).
+
+    The URL is deliberately not part of the key: raw caches hold point-in-time data that cannot be refetched, so changing the
+    key would orphan them. The contract is one label per URL (every caller builds its label from a fixed endpoint), and
+    ``test_every_http_cache_label_maps_to_one_url`` in tests/ingest guards it.
+    """
     canon = _canonical_params(params)
     digest = hashlib.sha1(json.dumps([label, canon], sort_keys=True).encode("utf-8")).hexdigest()[:12]
     readable = "_".join(v for v in canon.values() if v)

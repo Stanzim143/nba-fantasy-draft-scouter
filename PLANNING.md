@@ -254,3 +254,5 @@ Start with simple, explainable models (regularized regression, gradient boosting
 
 - [x] Methodology follow-ups (ADR 0030, docs/limitations.md): zero-game seasons modelled (hurdle, ADR 0031), calibrated season-total interval (ADR 0033); a dated position source is not needed (ADR 0033, closed by evidence).
 - [ ] Rookies' and debutants' chance of not appearing at all (needs drafted-but-never-played rookies, which the `players` table does not hold).
+- [ ] The wiki ingesters (`wiki_transactions`, `wiki_contracts`, `wiki_coaches`) still keep their raw cache under `default_cache_dir`, ignoring `--data-dir` (ESPN, FantasyPros and NBA clients honor it).
+- [ ] `constraints.txt` pins are bumped by hand: Dependabot most likely does not track a constraints file. Revisit if a pin falls behind.
