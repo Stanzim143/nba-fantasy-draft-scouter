@@ -94,7 +94,8 @@ def test_ci_triggers_permissions_and_concurrency():
     assert "pull_request" in wf["on"] and "main" in wf["on"]["push"]["branches"]
     assert wf["permissions"] == {"contents": "read"}  # minimal token
     conc = wf["concurrency"]
-    assert conc["cancel-in-progress"] is True and "github.ref" in conc["group"]
+    # only PR runs are superseded; a push to main is never cancelled
+    assert "pull_request" in str(conc["cancel-in-progress"]) and "github.ref" in conc["group"]
     assert all(isinstance(job.get("timeout-minutes"), int) for job in wf["jobs"].values())
     for job in wf["jobs"].values():
         assert "permissions" not in job or job["permissions"] in ({"contents": "read"}, "read-all")
@@ -133,11 +134,14 @@ def test_ci_lint_job_requires_ruff():
     assert re.search(r"^ruff==\d+\.\d+\.\d+$", pin, re.M), "ruff must be pinned exactly in CI"
 
 
-def test_ci_actions_are_pinned_to_a_major_version():
+def test_ci_actions_are_pinned_to_a_full_commit_sha_with_a_version_comment():
     for job in _workflow()["jobs"].values():
         for step in job["steps"]:
             if "uses" in step:
-                assert re.fullmatch(r"[\w.-]+/[\w.-]+@v\d+", step["uses"]), step["uses"]
+                assert re.fullmatch(r"[\w.-]+/[\w.-]+@[0-9a-f]{40}", step["uses"]), step["uses"]
+    text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    uses = [ln for ln in text.splitlines() if ln.strip().startswith(("- uses:", "uses:"))]
+    assert uses and all(re.search(r"@[0-9a-f]{40} # v\d+", ln) for ln in uses), uses
 
 
 def test_ci_yaml_files_are_valid_yaml():

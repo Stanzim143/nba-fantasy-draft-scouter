@@ -54,7 +54,7 @@ def test_no_tracked_file_contains_espn_cookie_values(tracked):
 
 def test_secret_pattern_catches_real_shapes_and_ignores_placeholders():
     assert SECRET.search("espn_s2=" + "A" * 80)
-    assert SECRET.search("SWID={12345678-ABCD-ABCD-ABCD-1234567890AB}")
+    assert SECRET.search("SWID=" + "{12345678-ABCD-ABCD-ABCD-" + "1234567890AB}")
     assert not SECRET.search("ESPN_S2=\nESPN_SWID=\n")
     assert not SECRET.search("espn_s2=...")
 
