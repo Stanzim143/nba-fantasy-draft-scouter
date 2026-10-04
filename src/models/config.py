@@ -28,6 +28,13 @@ class BaselineConfig:
     appearance_min_rows: int = 100                    # historical (player, season) rows needed to fit it
     # Season-total intervals (ADR 0033): adds proj_total_fp_p10/p50/p90 columns; every existing column is unchanged.
     season_intervals: bool = False
+    # Interval calibration (``calibrate_quantiles``, ``fit_season_uncertainty``) uses out-of-fold residuals: the most recent
+    # ``oof_folds`` training seasons are each projected by a model refit on the history before them (expanding window),
+    # instead of by the model fit on those same rows, which understates the spread. A fold needs ``oof_min_seasons`` earlier
+    # seasons; with no usable fold the in-sample residuals are the fall-back. False restores the in-sample calibration.
+    oof_calibration: bool = True
+    oof_folds: int = 3
+    oof_min_seasons: int = 3
     min_rookie_rows: int = 20                         # historical rookies needed for the draft-slot prior
     active_seasons: int = 2                           # player must have played in one of this many latest seasons
     vol_min_games: int = 10                           # games for a season's FP std to inform volatility

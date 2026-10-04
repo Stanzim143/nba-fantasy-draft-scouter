@@ -18,13 +18,14 @@ The model only ever sees a ``History`` and calls ``History.assert_no_future``.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import copy
+from dataclasses import dataclass, field, replace
 from typing import Mapping
 
 import numpy as np
 import pandas as pd
 
-from src.contracts import PROJECTION_STATS, STAT_COLUMN_MAP, History, season_start, validate_table
+from src.contracts import PROJECTION_STATS, STAT_COLUMN_MAP, History, season_start, season_str, validate_table
 from src.models.appearance import AppearanceModel, gp_mixture
 from src.models.availability import AvailabilityModel
 from src.models.config import BaselineConfig
@@ -155,7 +156,8 @@ class FittedBaseline:
         out["is_rookie"] = np.ones(len(pids), dtype=bool)
         return pd.DataFrame(out)
 
-    def calibrate_quantiles(self, train: Frame, min_games: int = 500) -> tuple[float, float, float]:
+    def calibrate_quantiles(self, train: Frame, min_games: int = 500,
+                            oof: pd.DataFrame | None = None) -> tuple[float, float, float]:
         """Quantile shape of ``(game FP - projection) / projected game sd`` over the history's own games.
 
         Every historical player-season with an earlier season is projected from its lags alone (the
@@ -163,15 +165,22 @@ class FittedBaseline:
         configured probabilities become the multipliers behind ``fppg_p10/p50/p90``. Because the
         residual is taken around the *projection*, the floor and ceiling include projection error
         as well as game-to-game noise, so about 10% of games fall below the floor.
+
+        ``oof`` (see ``BaselineProjector.oof_projections``) supplies the projections of the most recent seasons from models refit
+        on the history before each; when given, those replace the in-sample projections (the model fit on the very rows it
+        projects), which are the fall-back when no fold was usable.
         """
-        rows = train.has_history()
-        if not rows.any():
-            return self.quantile_shape
-        sub = train.subset(rows)
-        d = self._core(sub)
-        pred = self._fppg(d)
-        sd = d["z_hat"].to_numpy(float) * self.vol_prior.sd_prior(pred)
-        keys = pd.DataFrame({"player_id": sub.pids, "s": sub.target_s, "pred": pred, "sd": sd})
+        if oof is not None and len(oof):
+            keys = oof[["player_id", "s", "pred", "sd"]]
+        else:
+            rows = train.has_history()
+            if not rows.any():
+                return self.quantile_shape
+            sub = train.subset(rows)
+            d = self._core(sub)
+            pred = self._fppg(d)
+            sd = d["z_hat"].to_numpy(float) * self.vol_prior.sd_prior(pred)
+            keys = pd.DataFrame({"player_id": sub.pids, "s": sub.target_s, "pred": pred, "sd": sd})
         g = self.panel_data.game_fp.merge(keys, on=["player_id", "s"])
         if len(g) < min_games:
             return self.quantile_shape
@@ -179,12 +188,17 @@ class FittedBaseline:
         q = np.quantile(u, self.config.quantiles)
         return (float(q[0]), float(q[1]), float(q[2]))
 
-    def fit_season_uncertainty(self, train: Frame) -> SeasonFppgUncertainty:
+    def fit_season_uncertainty(self, train: Frame, oof: pd.DataFrame | None = None) -> SeasonFppgUncertainty:
         """Relative spread of the season-mean FPPG miss, by seasons of history (ADR 0033).
 
         Every historical player-season after the first is projected from its own lags (veterans via ``_core``, players
-        with no history via the draft-slot prior) and compared with the realised season mean.
+        with no history via the draft-slot prior) and compared with the realised season mean. With ``oof`` (out-of-fold
+        projections of the most recent seasons, see ``BaselineProjector.oof_projections``) those replace the in-sample ones.
         """
+        if oof is not None and len(oof):
+            act = self.panel[["player_id", "s", "fppg", "gp"]]
+            m = oof.merge(act, on=["player_id", "s"])
+            return SeasonFppgUncertainty.fit(m["pred"], m["fppg"], m["gp"], m["sd"], m["n_hist"])
         later = train.target_s > self.panel["s"].min()
         vet = train.has_history() & later
         sub = train.subset(vet)
@@ -346,10 +360,37 @@ class BaselineProjector:
             transactions_features=transactions_features,
             coach_features=self._build_coach_features(
                 history, sub, mpg_train, panel["mpg"].to_numpy(float)[rows], panel["gp"].to_numpy(float)[rows]))
-        fitted.quantile_shape = fitted.calibrate_quantiles(train)
+        oof = self.oof_projections(history, panel) if cfg.oof_calibration else None
+        fitted.quantile_shape = fitted.calibrate_quantiles(train, oof=oof)
         if cfg.season_intervals:
-            fitted.season_uncertainty = fitted.fit_season_uncertainty(train)
+            fitted.season_uncertainty = fitted.fit_season_uncertainty(train, oof=oof)
         return fitted
+
+    def oof_projections(self, history: History, panel: pd.DataFrame) -> pd.DataFrame | None:
+        """Expanding-window out-of-fold projections of the last ``oof_folds`` training seasons.
+
+        For each such season ``s`` (with at least ``oof_min_seasons`` earlier ones) a copy of this projector is refit on the
+        history strictly before ``s`` and projects ``s``; the result has one row per projected player with ``pred`` (FPPG),
+        ``sd`` (game-level sd), ``n_hist`` and the season index ``s``. The inner refits do not calibrate (no recursion).
+        ``None`` when no season qualifies.
+        """
+        cfg = self.config
+        seasons = np.sort(panel["s"].unique())[1:]
+        folds = [int(s) for s in seasons if (panel["s"] < s).sum() and len(np.unique(panel.loc[panel["s"] < s, "s"])) >= cfg.oof_min_seasons]
+        folds = folds[-cfg.oof_folds:] if cfg.oof_folds > 0 else []
+        if not folds:
+            return None
+        inner = copy.copy(self)
+        inner.config = replace(cfg, oof_calibration=False, season_intervals=False)
+        tables = {"game_logs": history.game_logs, "team_games": history.team_games, "players": history.players,
+                  "player_season_bio": history.player_season_bio, **history.extras}
+        parts = []
+        for s in folds:
+            out = inner.fit(History.until(tables, season_str(s))).predict()
+            parts.append(pd.DataFrame({"player_id": out["player_id"].to_numpy("int64"), "s": s,
+                                       "pred": out["proj_fppg"].to_numpy(float), "sd": out["proj_fppg_sd"].to_numpy(float),
+                                       "n_hist": out["n_hist_seasons"].to_numpy("int64")}))
+        return pd.concat(parts, ignore_index=True)
 
     def _fit_appearance(self, pd_: PanelData, panel: pd.DataFrame, minutes: SpecFit,
                         injury_features: object | None = None) -> AppearanceModel:

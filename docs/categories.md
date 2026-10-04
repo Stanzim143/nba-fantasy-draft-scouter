@@ -200,7 +200,7 @@ below a 50-FPPG player who plays 78 games.
 
 `fppg_p10/p90` (section 5) are quantiles of one *game*. A season total is `T = Fbar * G` (season-mean FPPG over the games played, times games played), and its spread has
 three sources, all modelled (ADR 0033, `src/models/season_interval.py`): games played `G` from the hurdle mixture of 4.2; talent misprojection, a fitted relative spread `tau`
-of `(actual season FPPG - projected) / projected` by seasons of history (0, 1, 2, 3+; game noise `sd_game^2 / gp` is subtracted so it is not counted twice; floor 2%); and the
+(fitted on the same out-of-fold projections, ADR 0033 addendum) of `(actual season FPPG - projected) / projected` by seasons of history (0, 1, 2, 3+; game noise `sd_game^2 / gp` is subtracted so it is not counted twice; floor 2%); and the
 game noise of the average itself, `sd_game / sqrt(G)`. The columns are the 10th / 50th / 90th percentiles of a deterministic simulation of `Fbar * G` (1000 draws per player, a fixed
 seed per player id, so a projection never changes when another player is added). `proj_total_fp` is the *mean* and sits above the median for anyone with a real chance of missing the
 year. `Fbar` and `G` are treated as independent. Calibrated out of sample by risk group in the backtest report ('Season-total interval coverage'): overall 85% of realised totals fall
@@ -221,7 +221,8 @@ p_q         = proj_fppg + q_q * sd,   q = (q10, q50, q90)                       
 
 The multipliers `q` carry the *shape* of the distribution (right skew, thin left tail) and are calibrated in `FittedBaseline.calibrate_quantiles`
 (`baseline.py:149-171`) as the pooled quantiles of `(game FP - projection) / projected sd` over every historical player-season projected from earlier lags
-only (requires 500+ games, else the pooled per-season fall-back). Because the residual is taken around the **projection** and not the realised season mean,
+only (requires 500+ games, else the pooled per-season fall-back). Those projections are out-of-fold: the last three training seasons are each projected by
+a model refit on the history before them (ADR 0033 addendum), not by the model fit on the same rows. Because the residual is taken around the **projection** and not the realised season mean,
 the band contains projection error as well as game-to-game noise, so about 10% of games really do land below `fppg_p10`.
 
 Values on 2026-09-26: `a = 7.982`, `b = 0.1810`, `q = (-1.2885, -0.0701, +1.5423)`.

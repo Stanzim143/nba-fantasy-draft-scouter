@@ -115,3 +115,15 @@ oversight. It would be revisited only if a position-aware feature (for example p
 
 Reproduce: `python -m src.backtest --model baseline_hurdle --method-checks` (interval coverage), `python -m src.ingest.nba_injury_reports --seasons 2018-19:2025-26`
 (about an hour at the polite rate), then `python -m src.backtest --ablate baseline_hurdle_adp,baseline_hurdle_adp_labels --seasons 2020-21:2025-26`.
+
+## Addendum 2026-10-02: calibration is out-of-fold
+
+`calibrate_quantiles` (game-FP quantile shape) and `fit_season_uncertainty` (`tau`) originally measured residuals of the model on the very
+player-seasons it was fit on, which understates the spread. They now use expanding-window out-of-fold projections
+(`BaselineProjector.oof_projections`): each of the last `oof_folds` (3) training seasons is projected by a copy of the model refit on the history
+strictly before it (`BaselineConfig.oof_calibration`, `oof_min_seasons`; in-sample residuals remain the fall-back when no fold qualifies, and
+`oof_calibration=False` restores the old behaviour). Point projections do not change. On the 2026-10-02 real-data fit for 2026-27: game quantile
+shape `(-1.289, -0.070, +1.542)` -> `(-1.298, -0.083, +1.581)`; `tau` by seasons of history (0, 1, 2, 3+) `0.473, 0.392, 0.362, 0.270` ->
+`0.470, 0.450, 0.417, 0.283`, so season-total bands widen by roughly 10-15% for players with 1-2 seasons of history. The coverage figures in this ADR
+and in `docs/categories.md` section 4.4 were measured before this change; re-run `python -m src.backtest --model baseline_hurdle --method-checks`
+to refresh them (a refit costs about 3x more because of the inner refits).
