@@ -17,6 +17,7 @@ season is never read (``slice_adp`` drops it, ``assert_adp_no_future`` checks). 
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -25,13 +26,19 @@ import pandas as pd
 
 from src.contracts import season_start
 
+log = logging.getLogger(__name__)
+
+MIN_MATCH_CONFIDENCE = 0.9     # player_id_map: exact name matches are 1.0, fuzzy matches below it; the map's own floor is 0.9
 LOG_ADP_CENTER = 4.0           # log(55): roughly the middle of the listed ADP range
 MIN_COVERED_ROWS = 100         # ADP-covered training rows needed to fit the minutes adjustment
 RIDGE = 5.0
 
 
-def load_store_adp(base: Path | None = None, *, source: str = "espn", min_confidence: float = 0.0) -> pd.DataFrame:
-    """``season, player_id, adp`` from the ingested ``adp`` table mapped through ``player_id_map`` (raises if absent)."""
+def load_store_adp(base: Path | None = None, *, source: str = "espn", min_confidence: float = MIN_MATCH_CONFIDENCE) -> pd.DataFrame:
+    """``season, player_id, adp`` from the ingested ``adp`` table mapped through ``player_id_map`` (raises if absent).
+
+    Id matches below ``min_confidence`` (exact = 1.0, fuzzy name matches lower) are dropped, and the number dropped is logged.
+    """
     from src.ingest.espn_adp import adp_path
     from src.store import read_table
 
@@ -40,10 +47,15 @@ def load_store_adp(base: Path | None = None, *, source: str = "espn", min_confid
         raise FileNotFoundError(f"{path} not found; has `python -m src.ingest.espn_adp` run?")
     raw = pd.read_parquet(path)
     ids = read_table("player_id_map", base)
-    ids = ids[(ids["source"] == source) & (ids["confidence"] >= min_confidence)]
+    ids = ids[ids["source"] == source]
+    low = ids[ids["confidence"] < min_confidence]
+    ids = ids[ids["confidence"] >= min_confidence]
     raw = raw[raw["source"] == source].copy()
     raw["source_id"] = raw["source_id"].astype(str)
     ids = ids[["source_id", "player_id"]].assign(source_id=lambda d: d["source_id"].astype(str))
+    if len(low):
+        n_rows = int(raw["source_id"].isin(set(low["source_id"].astype(str))).sum())
+        log.warning("ADP: dropped %d id match(es) below confidence %.2f (%d ADP rows)", len(low), min_confidence, n_rows)
     m = raw.merge(ids, on="source_id", how="inner")
     m = m.sort_values(["season", "player_id", "adp"], kind="stable").drop_duplicates(["season", "player_id"])
     out = m[["season", "player_id", "adp"]].reset_index(drop=True)

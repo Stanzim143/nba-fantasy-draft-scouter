@@ -94,7 +94,7 @@ class AppearanceModel:
         if self.clf is None:
             return np.full(n, float(np.clip(self.base_rate, *P_CLIP)))
         X = _with_extra(appearance_features(f_lags, self.decay, age, mpg), extra, self.n_extra)
-        Xs = self.scaler.transform(np.nan_to_num(X, nan=0.0))
+        Xs = np.nan_to_num(self.scaler.transform(X), nan=0.0)   # a missing feature takes its training-set column mean
         return np.clip(self.clf.predict_proba(Xs)[:, 1], *P_CLIP)
 
 

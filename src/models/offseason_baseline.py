@@ -94,7 +94,9 @@ class BaselineOffseasonProjector:
         h = History.until(tables, season)
         if h.game_logs.empty:
             return None
-        key = (season, type(self.base).__name__, _fingerprint({"game_logs": h.game_logs, "players": h.players}))
+        key = (season, type(self.base).__name__, repr(getattr(self.base, "config", None)),
+               repr(sorted(dict(getattr(self.base, "scoring", {})).items())),
+               _fingerprint({"game_logs": h.game_logs, "players": h.players}))
         if key not in self._walk_forward:
             self._walk_forward[key] = self.base.project(h)
         return self._walk_forward[key]

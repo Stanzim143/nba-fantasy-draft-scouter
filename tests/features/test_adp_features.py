@@ -90,7 +90,7 @@ def _write_store(base, adp_rows, id_rows):
     pd.DataFrame(id_rows).to_parquet(base / "processed" / "player_id_map.parquet")
 
 
-def test_load_store_adp_maps_ids_keeps_lowest_adp_and_skips_unknowns(tmp_path):
+def test_load_store_adp_maps_ids_keeps_lowest_adp_and_skips_unknowns(tmp_path, caplog):
     ids = [dict(player_id=11, source="espn", source_id="a", source_name="A", match_method="exact", confidence=1.0),
            dict(player_id=12, source="espn", source_id="b", source_name="B", match_method="fuzzy", confidence=0.4),
            dict(player_id=13, source="other", source_id="a", source_name="A", match_method="exact", confidence=1.0)]
@@ -100,9 +100,12 @@ def test_load_store_adp_maps_ids_keeps_lowest_adp_and_skips_unknowns(tmp_path):
            dict(season="2024-25", source="espn", source_id="zzz", adp=90.0),
            dict(season="2024-25", source="yahoo", source_id="a", adp=1.0)]
     _write_store(tmp_path, adp, ids)
-    got = load_store_adp(tmp_path).sort_values("player_id").reset_index(drop=True)
+    got = load_store_adp(tmp_path, min_confidence=0.0).sort_values("player_id").reset_index(drop=True)
     assert got[["player_id", "adp"]].values.tolist() == [[11, 12.0], [12, 70.0]]
-    assert load_store_adp(tmp_path, min_confidence=0.5)["player_id"].tolist() == [11]
+    with caplog.at_level("WARNING", logger="src.features.adp"):
+        # the default floor drops the 0.4 fuzzy match, and says so
+        assert load_store_adp(tmp_path)["player_id"].tolist() == [11]
+    assert "dropped 1 id match" in caplog.text
 
 
 def test_load_store_adp_reports_a_missing_table(tmp_path):

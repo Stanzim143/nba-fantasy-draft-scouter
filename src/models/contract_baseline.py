@@ -75,7 +75,9 @@ class BaselineContractProjector:
         h = History.until(tables, season)
         if h.game_logs.empty:
             return None
-        key = (season, type(self.base).__name__, _fingerprint({"game_logs": h.game_logs, "players": h.players}))
+        key = (season, type(self.base).__name__, repr(getattr(self.base, "config", None)),
+               repr(sorted(dict(getattr(self.base, "scoring", {})).items())),
+               _fingerprint({"game_logs": h.game_logs, "players": h.players}))
         if key not in self._walk_forward:
             self._walk_forward[key] = self.base.project(h)
         return self._walk_forward[key]
@@ -116,7 +118,8 @@ class BaselineContractProjector:
             out["contract_factor"] = factor
             out["proj_fppg"] = new_fppg
             out["proj_total_fp"] = out["proj_fppg"] * out["proj_gp"]
-            for c in ("fppg_p10", "fppg_p50", "fppg_p90", "proj_fppg_sd"):
+            for c in ("fppg_p10", "fppg_p50", "fppg_p90", "proj_fppg_sd",
+                      "proj_total_fp_p10", "proj_total_fp_p50", "proj_total_fp_p90"):
                 if c in out.columns:
                     out[c] = out[c].to_numpy(float) * factor
             out["contract_enabled"] = True

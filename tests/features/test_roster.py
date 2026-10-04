@@ -220,3 +220,20 @@ def test_min_fit_rows_is_the_documented_value():
 
 def test_mpg_shift_cap_is_the_documented_value():
     assert MPG_SHIFT_CAP == pytest.approx(4.0)
+
+
+def test_roster_and_transactions_adjustments_do_not_apply_the_fitted_intercept():
+    from src.features.roster import RosterFeatures
+    from src.features.transactions import TransactionFeatures
+
+    panel = pd.DataFrame({"player_id": [1, 1], "s": [2016, 2017], "pace": [1.0, 1.0], "role_share": [0.2, 0.2],
+                          "pos_crowding": [0.5, 0.5]})
+    rf = RosterFeatures(panel, 2, 0.6, np.array([50.0, 0.0, 0.0, 0.0]))     # a huge intercept and nothing else
+    assert rf.build(np.array([1, 2]), np.array([2018, 2018])).tolist() == [0.0, 0.0]
+
+    class Ctx:
+        def for_players(self, pids, target_s):
+            return np.zeros((len(pids), 2))
+
+    tf = TransactionFeatures(Ctx(), np.array([50.0, 0.0, 0.0]))
+    assert tf.build(np.array([1, 2]), np.array([2018, 2018])).tolist() == [0.0, 0.0]

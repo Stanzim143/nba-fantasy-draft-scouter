@@ -294,8 +294,6 @@ class TransactionFeatures:
         row with no usable transaction context."""
         pids = np.asarray(pids, "int64")
         target_s = np.asarray(target_s, "int64")
-        n = len(pids)
         X_raw = self.ctx.for_players(pids, target_s)
-        X = np.column_stack([np.ones(n), X_raw])
-        adj = X @ self.beta
+        adj = X_raw @ self.beta[1:]     # the fitted intercept is not applied (as in coach.py): a uniform shift is the base model's job
         return np.clip(adj, -MPG_SHIFT_CAP, MPG_SHIFT_CAP)

@@ -228,6 +228,5 @@ class RosterFeatures:
         ok = np.isfinite(X_context).all(axis=1)
         adj = np.zeros(n)
         if ok.any():
-            X = np.column_stack([np.ones(ok.sum()), X_context[ok]])
-            adj[ok] = X @ self.beta
+            adj[ok] = X_context[ok] @ self.beta[1:]     # the fitted intercept is not applied (as in coach.py): a uniform shift is the base model's job
         return np.clip(adj, -MPG_SHIFT_CAP, MPG_SHIFT_CAP)

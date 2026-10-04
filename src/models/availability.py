@@ -121,7 +121,7 @@ class AvailabilityModel:
             # Too little history to fit: half own recent rate, half league mean.
             f_bar = np.where(np.isfinite(X[:, 0]), X[:, 0], self.league_mean)
             return np.clip(0.5 * f_bar + 0.5 * self.league_mean, *MU_CLIP)
-        Xs = self.scaler.transform(np.nan_to_num(X, nan=self.league_mean))
+        Xs = np.nan_to_num(self.scaler.transform(X), nan=0.0)   # a missing feature takes its training-set column mean
         return np.clip(self.clf.predict_proba(Xs)[:, 1], *MU_CLIP)
 
     def distribution(self, mu: np.ndarray, season_games: float, quantiles=(0.10, 0.90)):
