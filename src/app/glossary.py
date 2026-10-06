@@ -209,6 +209,14 @@ _IDENTITY_PROJECTION: dict[str, Entry] = {
         "preseason games share, preseason minutes and Summer League minutes.",
         f"{CATEGORIES}#6-who-gets-which-projection",
     ),
+    "rank_reason": _e(
+        "A one-line description of why the model ranked this player where it did (FP per game x games, "
+        "value over replacement, availability, age, ADP disagreement, risk flags).",
+        "Generated from the board's own columns; it describes the projection and never changes it. "
+        "It cannot explain causes the model never saw (camp news, role changes): where ADP disagrees "
+        "strongly it says so and leaves the cause to you.",
+        "docs/app.md",
+    ),
 }
 
 # --------------------------------------------------------------------------------------------

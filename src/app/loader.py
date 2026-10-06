@@ -15,6 +15,7 @@ from src.contracts import HISTORY_TABLES, History, season_start
 from src.models.panel import season_lengths, target_season_games
 from src.models.registry import available_projectors, get_projector
 from src.value.board import build_board
+from src.value.rank_reason import add_rank_reason
 from src.value.vorp import POSITIONAL_MODES
 
 
@@ -199,7 +200,7 @@ def load_board(season: str, model: str = "baseline", *, teams: int | None = None
 
     if board.empty:
         raise BoardUnavailable(f"the board for {season} came back empty.")
-    return board
+    return add_rank_reason(board, float(games))
 
 
 def load_watchlist(season: str, *, model: str | None = None, teams: int | None = None, synthetic: bool = False,

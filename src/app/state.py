@@ -347,4 +347,5 @@ def display_columns(board: pd.DataFrame) -> list[str]:
     ret = [c for c in ("return_flag", "return_tail") if c in board.columns]   # right after vorp, visible without scrolling
     # ADR 0024: advisory short-absence flag (cause unknown; never a projection)
     ret += [c for c in ("lm_flag",) if c in board.columns]
-    return BOARD_COLUMNS[:7] + extra + BOARD_COLUMNS[7:8] + ret + BOARD_COLUMNS[8:] + band + tail
+    why = [c for c in ("rank_reason",) if c in board.columns]     # one-line description of the rank, right after the name/position
+    return BOARD_COLUMNS[:3] + why + BOARD_COLUMNS[3:7] + extra + BOARD_COLUMNS[7:8] + ret + BOARD_COLUMNS[8:] + band + tail

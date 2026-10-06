@@ -45,7 +45,7 @@ PAGE = Path(__file__).resolve().parents[2] / "src" / "app" / "draft_board.py"
 # --------------------------------------------------------------------------------------------
 
 def _every_possible_board_column() -> set[str]:
-    cols = set(BASE_COLUMNS) | set(CARRIED) | {"adp", "adp_gap"} | set(BLEND_COLUMNS)
+    cols = set(BASE_COLUMNS) | set(CARRIED) | {"adp", "adp_gap", "rank_reason"} | set(BLEND_COLUMNS)
     cols |= set(RISK_COLUMNS)
     cols |= set(RETURN_COLUMNS) | {RETURN_VALIDATION_COLUMN}
     cols |= set(LM_COLUMNS) | {LM_VALIDATION_COLUMN}
