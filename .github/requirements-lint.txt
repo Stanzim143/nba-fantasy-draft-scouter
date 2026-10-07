@@ -1,2 +1,2 @@
 # Lint toolchain for CI (kept separate from project dependencies). Bumped by Dependabot.
-ruff==0.16.9
+ruff==0.16.10
