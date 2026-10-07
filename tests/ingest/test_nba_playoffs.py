@@ -1,5 +1,4 @@
 """nba_playoffs: only ``004<yy>`` playoff game ids, played minutes, newest rows replace a re-pulled season."""
-import pandas as pd
 from ingest_fakes import wrap
 
 from src.ingest import nba_playoffs as po
