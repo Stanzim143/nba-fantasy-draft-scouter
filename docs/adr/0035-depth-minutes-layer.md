@@ -37,7 +37,7 @@ playoff logs zero the feature (bit-identical to the base model, tested).
 Reproduce: `python -m src.ingest.nba_playoffs --seasons 2015-16:2025-26`, then `python -m src.backtest --ablate baseline,baseline_depth
 --seasons 2016-17:2025-26` and `--ablate baseline_hurdle_adp_offseason_debut,baseline_hurdle_adp_depth_offseason_debut`. The effect is small: about 0.8 FP of total-FP error out of about 316, and no top-50 gain. The `--leak-check` run
 could not complete on the 8 GB dev machine (out of memory); leakage is instead guarded structurally (transactions dated before
-1 October, playoffs only from seasons before the target, `History.until` for game logs) and by a unit test.
+1 October, playoffs only from seasons before the target, `History.until` for game logs) and by unit tests of the 1 October cutoff and the target-season playoff exclusion (the projector-level future-invariance test runs without the optional inputs).
 
 **D4. The board default becomes `baseline_hurdle_adp_depth_offseason_debut`** (draft board, `daily_refresh` board CSVs, `adp_blend`
 default). The ADP blend (ADR 0032) must be refit for it: `python -m src.value.adp_blend fit`.
