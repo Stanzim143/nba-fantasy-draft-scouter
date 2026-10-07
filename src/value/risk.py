@@ -66,7 +66,8 @@ def compute_risk(projections: pd.DataFrame, board: pd.DataFrame, history: Histor
 
     last_team = last_season_team(history.player_season_bio)
     ids = board["player_id"].to_numpy("int64")
-    frames: dict[str, pd.DataFrame | None] = {"preseason": None, "status": None, "context": None}
+    frames: dict[str, pd.DataFrame | None] = {"preseason": None, "status": None, "context": None, "depth": None,
+                                              "playoffs": None}
     if pl_games is not None:
         team_of = last_team
         if roster is not None:
@@ -81,12 +82,29 @@ def compute_risk(projections: pd.DataFrame, board: pd.DataFrame, history: Histor
     if roster is not None:
         stars = set(board.loc[board["rank"] <= R.STAR_RANK, "player_id"].astype(int))
         frames["context"] = R.context_flags(roster, last_team, stars, _team_names(history, projections)).flags
+    if roster is not None:
+        opened = R.minutes_opened(history.game_logs, history.team_games, roster, _team_names(history, projections))
+        frames["depth"] = R.depth_flags(roster, opened, projections.drop_duplicates("player_id").set_index("player_id")["proj_mpg"])
+    last = history.game_logs["season"].max() if len(history.game_logs) else None
+    try:
+        from src.ingest import nba_playoffs
+
+        po = nba_playoffs.read_playoff_logs(data_dir)
+        if last is not None and (po["season"] == last).any():
+            from src.value.league import load_league
+
+            frames["playoffs"] = R.playoff_flags(po[po["season"] == last], history.game_logs, load_league()["scoring"])
+        else:
+            notes.append(f"no playoff logs for {last}: playoff flags skipped (python -m src.ingest.nba_playoffs --seasons {last})")
+    except FileNotFoundError:
+        notes.append("no playoff logs: playoff flags skipped (run src.ingest.nba_playoffs)")
     if frames["preseason"] is not None and roster is not None:
         # only players under contract right now: an absent free agent or retiree is not an injury
         on_roster = frames["preseason"]["player_id"].isin(roster["player_id"])
         frames["preseason"].loc[~on_roster, "pre_flag"] = ""
     overlay = R.build_overlay(board[["player_id", "proj_gp"]], preseason=frames["preseason"], status=frames["status"],
-                              context=frames["context"], today=today_ts)
+                              context=frames["context"], depth=frames["depth"], playoffs=frames["playoffs"],
+                              today=today_ts)
     return overlay[["player_id", *RISK_COLUMNS]], notes
 
 

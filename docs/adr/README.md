@@ -43,6 +43,7 @@ Status as of 2026-09-29.
 | [0031](0031-hurdle-availability.md) | Hurdle availability: model the chance a player appears at all (P(appear) x conditional games played) | Accepted |
 | [0032](0032-adp-as-input-and-blend.md) | ADP as an input to availability and minutes, and as a blended board rank | Accepted |
 | [0033](0033-season-intervals-and-injury-labels.md) | Season-total intervals, labelled NBA injury-report data, point-in-time positions not built | Accepted |
+| [0034](0034-depth-and-playoff-flags.md) | Departed-minutes and playoff-role flags in the risk overlay (descriptive, not projection inputs) | Accepted |
 
 ## Writing a new ADR
 

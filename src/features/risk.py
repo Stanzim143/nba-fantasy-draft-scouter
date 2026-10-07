@@ -11,6 +11,10 @@ The overlay is a set of **flags and an advisory games-at-risk estimate** beside 
 * ``status_flags``: ESPN's current ``injuryStatus``. Not backtestable (ESPN keeps no history; the NBA's own injury-report
   PDFs do not exist before opening week, so there is no preseason archive anywhere). The haircut per status is an
   explicit **assumption** (:data:`ASSUMED_STATUS_HAIRCUT`), shown as such, never fed into a projection.
+* ``minutes_opened`` / ``depth_flags``: rotation minutes that left a team since last season (traded, signed elsewhere or off every
+  roster) net of the minutes that arrived, for the players still there. Descriptive, same status as ``context_flags``.
+* ``playoff_flags``: a role-player's closing playoff role that was much larger than in the regular season (the
+  regular-season tables exclude playoffs by contract). Descriptive and a small sample by nature.
 * ``context_flags``: a new team, and stars who arrived at or left his team since last season, from the roster snapshot
   against last season's final team. ADR 0010 and 0011 measured roster and transaction context as a projection input and
   found no lift, so this is descriptive: it tells you what changed, not what it is worth.
@@ -28,6 +32,13 @@ MIN_TEAM_GAMES = 3            # a team must have played this many preseason game
 ROTATION_MPG = 15.0           # "rotation veteran": projected minutes at or above this
 PARTIAL_SHARE = 0.5           # played fewer than this share of his team's preseason games = partial
 STALE_NEWS_DAYS = 45          # an ESPN status whose last news is older than this is shown but not counted as active risk
+MIN_OPENED_NET = 20.0         # net team minutes per game opened (departed - arrived) before the depth flag shows
+DEPART_NAME_MPG = 8.0         # a departed player is named in the flag when he averaged this many minutes per team game
+DEPTH_MPG_RANGE = (8.0, 30.0)  # the flag is shown for players projected in this minutes range (stars are not the ones helped)
+PLAYOFF_MIN_GAMES = 5         # fewer playoff games than this is too thin to mention
+PLAYOFF_RECENT_GAMES = 5      # the closing run: the player's last this-many playoff games
+PLAYOFF_ROLE_MAX_MPG = 28.0   # regular-season minutes at or above this = a starter-level role, never flagged
+PLAYOFF_MPG_UPLIFT = 4.0      # closing playoff mpg above the regular season by at least this much -> flag
 STAR_RANK = 60                # "star" for arrival/departure flags: board rank at or better than this
 
 # Advisory haircuts (share of the projected games), NOT estimates from data. They exist so a board column can show
@@ -127,8 +138,90 @@ def context_flags(roster: pd.DataFrame, last_team: pd.Series, star_ids: set[int]
     return ContextResult(flags, arr)
 
 
+def minutes_opened(logs: pd.DataFrame, team_games: pd.DataFrame, roster: pd.DataFrame, names: pd.Series) -> pd.DataFrame:
+    """Per team: ``out_mpg``, ``in_mpg``, ``net_open`` and ``departed`` (readable names) from last season's minutes.
+
+    ``logs`` / ``team_games`` are the regular-season tables for the completed season (the last season of the history);
+    ``roster`` is the newest snapshot. A player's minutes with a team are ``sum(min) / team games`` (minutes per *team* game, so a
+    midseason trade is split correctly). Minutes with a team the player is not on now count as **out** for that team and, if he is
+    on a roster, **in** for his new one. Players on no roster (retired, unsigned) count as out, so a free agent who signs later
+    overstates the departures; rookies and two-way fill-ins are unmeasured and not counted as in.
+    """
+    cols = ["team_id", "out_mpg", "in_mpg", "net_open", "departed"]
+    if logs.empty or team_games.empty:
+        return pd.DataFrame(columns=cols)
+    season = logs["season"].max()
+    lg, tg = logs[logs["season"] == season], team_games[team_games["season"] == season]
+    n_games = tg.groupby("team_id").size()
+    mins = lg.groupby(["player_id", "team_id"])["min"].sum().rename("min_sum").reset_index()
+    mins["mpg"] = mins["min_sum"] / mins["team_id"].map(n_games)
+    now = roster.drop_duplicates("player_id").set_index("player_id")["team_id"]
+    mins["now"] = mins["player_id"].map(now)
+    off = mins[mins["now"].isna() | (mins["now"] != mins["team_id"])]
+    out = off.groupby("team_id")["mpg"].sum()
+    inn = off[off["now"].notna()].groupby("now")["mpg"].sum()
+    named = {}
+    for tid, g in off[off["mpg"] >= DEPART_NAME_MPG].sort_values("mpg", ascending=False).groupby("team_id"):
+        named[tid] = ", ".join(f"{names.get(i, str(i))} {m:.0f}" for i, m in zip(g["player_id"].head(4), g["mpg"].head(4)))
+    teams = pd.Index(sorted(set(out.index) | set(inn.index)), name="team_id")
+    res = pd.DataFrame({"out_mpg": out.reindex(teams).fillna(0.0), "in_mpg": inn.reindex(teams).fillna(0.0)})
+    res["net_open"] = res["out_mpg"] - res["in_mpg"]
+    res["departed"] = [named.get(t, "") for t in teams]
+    return res.reset_index()[cols]
+
+
+def depth_flags(roster: pd.DataFrame, opened: pd.DataFrame, proj_mpg: pd.Series) -> pd.DataFrame:
+    """``player_id, depth_flag``: text for players on a team that lost ``MIN_OPENED_NET``+ net minutes (see :func:`minutes_opened`)."""
+    r = roster.drop_duplicates("player_id").set_index("player_id")
+    o = opened.set_index("team_id") if len(opened) else pd.DataFrame(columns=["out_mpg", "in_mpg", "net_open", "departed"])
+    lo, hi = DEPTH_MPG_RANGE
+    rows = []
+    for pid, tid, abbr in zip(r.index, r["team_id"], r["team_abbr"]):
+        if tid not in o.index:
+            continue
+        row, m = o.loc[tid], proj_mpg.get(pid, np.nan)
+        if row["net_open"] >= MIN_OPENED_NET and np.isfinite(m) and lo <= m <= hi:
+            rows.append((int(pid), f"minutes opened: {abbr} lost {row['out_mpg']:.0f} mpg ({row['departed']}), "
+                                   f"{row['in_mpg']:.0f} arrived, net {row['net_open']:.0f}"))
+    return pd.DataFrame(rows, columns=["player_id", "depth_flag"])
+
+
+def playoff_flags(playoffs: pd.DataFrame, logs: pd.DataFrame, scoring: dict | None = None) -> pd.DataFrame:
+    """``player_id, playoff_flag`` for role players whose closing playoff role was much bigger than their regular-season one.
+
+    ``playoffs`` is the ``playoff_logs`` table (``src.ingest.nba_playoffs``); only its newest season is read, against the same
+    season of ``logs``. The signal is the player's last ``PLAYOFF_RECENT_GAMES`` playoff games (a whole-run average hides a role
+    that grew late, usually after an injury ahead of him), needing ``PLAYOFF_MIN_GAMES`` games in all, a regular-season
+    average under ``PLAYOFF_ROLE_MAX_MPG`` (starters always play more in the playoffs; that is not news) and closing mpg >=
+    regular-season mpg + ``PLAYOFF_MPG_UPLIFT``. ``scoring`` (stat key -> weight) adds fantasy points per game to the text.
+    """
+    cols = ["player_id", "playoff_flag"]
+    if playoffs.empty or logs.empty:
+        return pd.DataFrame(columns=cols)
+    season = playoffs["season"].max()
+    po = playoffs[playoffs["season"] == season].sort_values(["game_date", "game_id"])
+    reg_mpg = logs[logs["season"] == season].groupby("player_id")["min"].mean()
+    if scoring:
+        from src.value.frame import fantasy_points_frame
+        po = po.assign(_fp=fantasy_points_frame(po, scoring))
+    rows = []
+    for pid, g in po.groupby("player_id"):
+        if len(g) < PLAYOFF_MIN_GAMES:
+            continue
+        rm = float(reg_mpg.get(pid, 0.0))
+        tail = g.tail(PLAYOFF_RECENT_GAMES)
+        m = float(tail["min"].mean())
+        if rm >= PLAYOFF_ROLE_MAX_MPG or m < rm + PLAYOFF_MPG_UPLIFT:
+            continue
+        extra = f", {tail['_fp'].mean():.1f} FP/g" if "_fp" in tail else ""
+        rows.append((int(pid), f"playoffs {season}: {m:.0f} mpg over his last {len(tail)} of {len(g)} games{extra} "
+                               f"(regular season {rm:.0f} mpg)"))
+    return pd.DataFrame(rows, columns=cols)
+
+
 def build_overlay(board: pd.DataFrame, *, preseason: pd.DataFrame | None = None, status: pd.DataFrame | None = None,
-                  context: pd.DataFrame | None = None, today=None) -> pd.DataFrame:
+                  context: pd.DataFrame | None = None, depth: pd.DataFrame | None = None,
+                  playoffs: pd.DataFrame | None = None, today=None) -> pd.DataFrame:
     """``board`` plus ``risk_flags`` (readable), ``risk_level`` (``""`` / ``watch`` / ``high``), ``risk_gp_haircut``
     (advisory share of projected games) and ``risk_gp`` (``proj_gp`` after that haircut). Projections are untouched."""
     today = today if today is not None else pd.Timestamp.today().normalize()
@@ -168,6 +261,12 @@ def build_overlay(board: pd.DataFrame, *, preseason: pd.DataFrame | None = None,
                 flags[i].append(sa)
             if sd:
                 flags[i].append(sd)
+    for frame, col in ((depth, "depth_flag"), (playoffs, "playoff_flag")):
+        if frame is not None and len(frame):
+            text = frame.drop_duplicates("player_id").set_index("player_id")[col].reindex(ids).fillna("").to_numpy()
+            for i, t in enumerate(text):
+                if t:
+                    flags[i].append(t)   # informational: neither changes risk_level nor the games haircut
     out["risk_flags"] = ["; ".join(f) for f in flags]
     out["risk_level"] = np.array(["", "watch", "high"])[level]
     out["risk_gp_haircut"] = haircut
