@@ -191,6 +191,7 @@ per-season breakdowns, calibration and miss analysis: `reports/real_2026-09-22/b
 | Baseline projector (current, with the cap) | 0.784 | 0.542 | 0.656 | 0.670 | 422.6 | run, 2026-09-24 |
 | `baseline_hurdle` (appearance stage, ADR [0031](adr/0031-hurdle-availability.md)) | 0.810 | 0.550 | 0.654 | n/a | 367.5 | run, 2026-10-01 |
 | `baseline_hurdle_adp_offseason_debut` (board stack: hurdle + ADP as input, ADR [0032](adr/0032-adp-as-input-and-blend.md)) | 0.819 | 0.533 | 0.674 | 0.687 | 316.3 | run, 2026-10-01 (vs `baseline_offseason_debut` 0.771 / 0.542 / 0.658 / 0.683 / 372) |
+| + depth layer (departed minutes + playoff closing role, ADR [0035](adr/0035-depth-minutes-layer.md)) | 0.785 | n/a | 0.656 | n/a | 421.7 | run, 2026-10-08 — small significant lift over baseline (+0.0016 Spearman, MAE -0.88); on the board stack +0.0004 / MAE -0.82 |
 | + injury layer | 0.785 | 0.542 | 0.652 | 0.672 | 421.4 | run |
 | + roster layer | 0.783 | 0.525 | 0.650 | 0.667 | 425.0 | run — **no lift, not recommended** |
 | + transactions layer | 0.782 | 0.558 | 0.656 | 0.671 | 425.8 | run — **hurts rank order, not recommended** |

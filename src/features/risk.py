@@ -34,10 +34,8 @@ PARTIAL_SHARE = 0.5           # played fewer than this share of his team's prese
 STALE_NEWS_DAYS = 45          # an ESPN status whose last news is older than this is shown but not counted as active risk
 MIN_OPENED_NET = 20.0         # net team minutes per game opened (departed - arrived) before the depth flag shows
 DEPART_NAME_MPG = 8.0         # a departed player is named in the flag when he averaged this many minutes per team game
-DEPTH_MPG_RANGE = (8.0, 30.0)  # the flag is shown for players projected in this minutes range (stars are not the ones helped)
 PLAYOFF_MIN_GAMES = 5         # fewer playoff games than this is too thin to mention
 PLAYOFF_RECENT_GAMES = 5      # the closing run: the player's last this-many playoff games
-PLAYOFF_ROLE_MAX_MPG = 28.0   # regular-season minutes at or above this = a starter-level role, never flagged
 PLAYOFF_MPG_UPLIFT = 4.0      # closing playoff mpg above the regular season by at least this much -> flag
 STAR_RANK = 60                # "star" for arrival/departure flags: board rank at or better than this
 
@@ -174,13 +172,12 @@ def depth_flags(roster: pd.DataFrame, opened: pd.DataFrame, proj_mpg: pd.Series)
     """``player_id, depth_flag``: text for players on a team that lost ``MIN_OPENED_NET``+ net minutes (see :func:`minutes_opened`)."""
     r = roster.drop_duplicates("player_id").set_index("player_id")
     o = opened.set_index("team_id") if len(opened) else pd.DataFrame(columns=["out_mpg", "in_mpg", "net_open", "departed"])
-    lo, hi = DEPTH_MPG_RANGE
     rows = []
     for pid, tid, abbr in zip(r.index, r["team_id"], r["team_abbr"]):
         if tid not in o.index:
             continue
         row, m = o.loc[tid], proj_mpg.get(pid, np.nan)
-        if row["net_open"] >= MIN_OPENED_NET and np.isfinite(m) and lo <= m <= hi:
+        if row["net_open"] >= MIN_OPENED_NET and np.isfinite(m):
             rows.append((int(pid), f"minutes opened: {abbr} lost {row['out_mpg']:.0f} mpg ({row['departed']}), "
                                    f"{row['in_mpg']:.0f} arrived, net {row['net_open']:.0f}"))
     return pd.DataFrame(rows, columns=["player_id", "depth_flag"])
@@ -191,9 +188,8 @@ def playoff_flags(playoffs: pd.DataFrame, logs: pd.DataFrame, scoring: dict | No
 
     ``playoffs`` is the ``playoff_logs`` table (``src.ingest.nba_playoffs``); only its newest season is read, against the same
     season of ``logs``. The signal is the player's last ``PLAYOFF_RECENT_GAMES`` playoff games (a whole-run average hides a role
-    that grew late, usually after an injury ahead of him), needing ``PLAYOFF_MIN_GAMES`` games in all, a regular-season
-    average under ``PLAYOFF_ROLE_MAX_MPG`` (starters always play more in the playoffs; that is not news) and closing mpg >=
-    regular-season mpg + ``PLAYOFF_MPG_UPLIFT``. ``scoring`` (stat key -> weight) adds fantasy points per game to the text.
+    that grew late, usually after an injury ahead of him), needing ``PLAYOFF_MIN_GAMES`` games in all and closing mpg >=
+    regular-season mpg + ``PLAYOFF_MPG_UPLIFT``, for every player (no role cap: the text carries both minutes figures). ``scoring`` (stat key -> weight) adds fantasy points per game to the text.
     """
     cols = ["player_id", "playoff_flag"]
     if playoffs.empty or logs.empty:
@@ -211,7 +207,7 @@ def playoff_flags(playoffs: pd.DataFrame, logs: pd.DataFrame, scoring: dict | No
         rm = float(reg_mpg.get(pid, 0.0))
         tail = g.tail(PLAYOFF_RECENT_GAMES)
         m = float(tail["min"].mean())
-        if rm >= PLAYOFF_ROLE_MAX_MPG or m < rm + PLAYOFF_MPG_UPLIFT:
+        if m < rm + PLAYOFF_MPG_UPLIFT:
             continue
         extra = f", {tail['_fp'].mean():.1f} FP/g" if "_fp" in tail else ""
         rows.append((int(pid), f"playoffs {season}: {m:.0f} mpg over his last {len(tail)} of {len(g)} games{extra} "

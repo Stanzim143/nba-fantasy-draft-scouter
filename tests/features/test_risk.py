@@ -96,13 +96,13 @@ def test_minutes_opened_splits_a_midseason_trade_by_team_games():
     assert o.loc[10, "out_mpg"] == 15 and o.loc[20, "out_mpg"] == 0 and o.loc[20, "in_mpg"] == 15
 
 
-def test_depth_flag_only_for_rotation_range_players_on_a_team_that_opened_enough_minutes():
+def test_depth_flag_for_every_player_with_a_projection_on_a_team_that_opened_enough_minutes():
     opened = pd.DataFrame({"team_id": [10, 20], "out_mpg": [70.0, 30.0], "in_mpg": [8.0, 25.0],
                            "net_open": [62.0, 5.0], "departed": ["Dort 23, Joe 18", "X 30"]})
     roster = pd.DataFrame({"player_id": [1, 2, 3, 4], "team_id": [10, 10, 10, 20], "team_abbr": ["OKC"] * 3 + ["BBB"]})
-    mpg = pd.Series({1: 18.0, 2: 34.0, 3: 3.0, 4: 18.0})     # 2 is a star, 3 is end-of-bench, 4's team did not open minutes
+    mpg = pd.Series({1: 18.0, 2: 34.0, 4: 18.0})     # 3 has no projection, 4's team did not open minutes
     f = R.depth_flags(roster, opened, mpg)
-    assert list(f["player_id"]) == [1] and "OKC lost 70 mpg (Dort 23, Joe 18)" in f["depth_flag"].iloc[0]
+    assert list(f["player_id"]) == [1, 2] and "OKC lost 70 mpg (Dort 23, Joe 18)" in f["depth_flag"].iloc[0]
     assert R.depth_flags(roster, opened.iloc[0:0], mpg).empty
 
 
@@ -114,14 +114,16 @@ def _po(pid, mins, season="2025-26"):
                          "pts": 10, "reb": 2, "ast": 2, "stl": 0, "blk": 0, "tov": 1, "fgm": 4, "fga": 9, "ftm": 1, "fta": 2, "fg3m": 1})
 
 
-def test_playoff_flag_uses_the_closing_run_of_role_players_not_starters():
-    reg = pd.DataFrame({"season": "2025-26", "player_id": [1] * 4 + [2] * 4 + [3] * 4, "min": [18.0] * 4 + [34.0] * 4 + [18.0] * 4})
+def test_playoff_flag_uses_the_closing_run_of_any_player_whose_role_grew():
+    reg = pd.DataFrame({"season": "2025-26", "player_id": [1] * 4 + [2] * 4 + [3] * 4 + [4] * 4,
+                        "min": [18.0] * 4 + [34.0] * 4 + [18.0] * 4 + [18.0] * 4})
     po = pd.concat([_po(1, [8, 12, 15, 10, 26, 27, 24, 33, 27]),       # bench guard whose role grew late
-                    _po(2, [40] * 9),                                  # starter: always more in the playoffs
+                    _po(2, [38, 40, 39, 41, 40, 40, 38, 39, 40]),      # starter: 34 -> 40 is also a bigger role
+                    _po(4, [18] * 9),                                  # unchanged role
                     _po(3, [10, 12, 14, 16]),                          # too few games
                     ])
     f = R.playoff_flags(po, reg, {"PTS": 1.0})
-    assert list(f["player_id"]) == [1]
+    assert list(f["player_id"]) == [1, 2]
     assert "last 5 of 9 games" in f["playoff_flag"].iloc[0] and "(regular season 18 mpg)" in f["playoff_flag"].iloc[0]
     assert "10.0 FP/g" in f["playoff_flag"].iloc[0]
 

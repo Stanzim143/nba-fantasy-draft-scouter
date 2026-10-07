@@ -4,8 +4,8 @@
 
 Why this exists: ``game_logs`` is regular season only by contract (ESPN H2H points ignores playoffs), so a breakout
 playoff run (a bench player starting in a conference final) is invisible to the model. This table feeds the descriptive
-``playoff_flag`` in the draft-day risk overlay (``src.features.risk.playoff_flags``); it does **not** feed any projection
-(a handful of games in an injury-driven role is not a validated predictor, and nothing in the backtest tests it).
+``playoff_flag`` in the draft-day risk overlay (``src.features.risk.playoff_flags``) and the validated ``po_uplift`` minutes
+feature (``src.features.depth``, ADR 0035), which needs ten seasons of playoffs (``--seasons 2015-16:2025-26``).
 
 ``season`` is the season the playoffs belong to, so ``History.until`` semantics hold: they are visible to a projection of
 season S only when ``season < S``. Standalone parquet (like ``offseason_logs``, ADR 0011 D1), not in ``src.contracts.TABLES``.

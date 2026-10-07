@@ -35,3 +35,9 @@ not the whole-run average, because a role that grew after an injury is invisible
 
 The flags appear on the board, watchlist and CLI in the live window with the rest of the risk overlay. Missing inputs degrade to a
 note, never an error. Read them as "worth a look at ADP", not as a quantified edge.
+
+## Addendum, 2026-10-08
+
+D1's "no lift" expectation was tested as ADR 0035: as a fitted minutes input for every player, the two signals improve
+MAE and Spearman significantly in the 2016-17 to 2025-26 walk-forward (small effect), unlike ADR 0010/0011's broader context features.
+The D2/D3 display limits (8-30 projected mpg, under 28 mpg regular season) were also dropped; flags now apply to all players.

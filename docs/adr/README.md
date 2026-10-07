@@ -44,6 +44,7 @@ Status as of 2026-09-29.
 | [0032](0032-adp-as-input-and-blend.md) | ADP as an input to availability and minutes, and as a blended board rank | Accepted |
 | [0033](0033-season-intervals-and-injury-labels.md) | Season-total intervals, labelled NBA injury-report data, point-in-time positions not built | Accepted |
 | [0034](0034-depth-and-playoff-flags.md) | Departed-minutes and playoff-role flags in the risk overlay (descriptive, not projection inputs) | Accepted |
+| [0035](0035-depth-minutes-layer.md) | Departed-minutes and playoff-role as a validated minutes layer (`baseline_depth`); board default updated | Accepted |
 
 ## Writing a new ADR
 

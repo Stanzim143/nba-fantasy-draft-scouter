@@ -193,7 +193,7 @@ def _run_live_sync(league_id: int, my_team_id: int | None, *, force: bool) -> No
             "Mark them manually below.")
 
 
-DEFAULT_REAL_MODEL = "baseline_hurdle_adp_offseason_debut"
+DEFAULT_REAL_MODEL = "baseline_hurdle_adp_depth_offseason_debut"
 
 
 def _default_model() -> str:
