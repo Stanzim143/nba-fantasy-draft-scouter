@@ -35,11 +35,11 @@ playoff logs zero the feature (bit-identical to the base model, tested).
 | | MAE, total FP | +0.82 | [+0.31, +1.33] | 8/10 | improves |
 
 Reproduce: `python -m src.ingest.nba_playoffs --seasons 2015-16:2025-26`, then `python -m src.backtest --ablate baseline,baseline_depth
---seasons 2016-17:2025-26` and `--ablate baseline_hurdle_adp_offseason_debut,baseline_hurdle_adp_depth_offseason_debut`. The effect is small: about 0.8 FP of total-FP error out of about 316, and no top-50 gain. `--leak-check` passed for both `baseline_depth` and the board stack on 2023-24 to 2025-26
+--seasons 2016-17:2025-26` and `--ablate baseline_hurdle_adp_offseason_debut,baseline_hurdle_adp_depth_offseason_debut`. The effect is small: about 0.8 FP of total-FP error out of about 316, and no top-50 gain. `--leak-check` passed for both `baseline_depth` and the board stack on 2025-26 (the last season of a 2023-24 to 2025-26 run)
 (the ten-season run could not complete in one process on the 8 GB dev machine: out of memory). That check perturbs the game-log
 tables only, so the two file inputs have their own guards: feature-level tests (`tests/models/test_depth.py`) show every player's
 features are identical with and without rows dated after the 1 October cutoff, next-season moves and target-season playoffs, and
-that the check fails if the cutoff is removed. Playoffs are keyed by season (`s - 1` for target `s`), so a target-season playoff
+those tests fail if the cutoff is removed. Playoffs are keyed by season (`s - 1` for target `s`), so a target-season playoff
 row can never reach a target-season feature even without the extra `season < target` filter.
 
 **D4. The board default becomes `baseline_hurdle_adp_depth_offseason_debut`** (draft board, `daily_refresh` board CSVs, `adp_blend`
