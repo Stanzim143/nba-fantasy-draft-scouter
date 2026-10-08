@@ -74,6 +74,70 @@ def test_projector_is_registered_and_identical_to_baseline_without_the_inputs(tm
     pd.testing.assert_frame_equal(a, b, check_exact=True)
 
 
+def _external_inputs(tables, *, with_future):
+    """Synthetic ``team_transactions`` and ``playoff_logs`` built from the league's own players.
+
+    Legit rows: preseason moves of the target season (before 1 October) and playoffs up to the season before the target.
+    Future rows (``with_future``): a move dated after the cutoff, moves of the next season, and playoffs of the target season
+    and after, with absurd minutes so any leak would move the projection.
+    """
+    gl = tables["game_logs"]
+    last = gl[gl["season"] == "2017-18"]
+    top = last.groupby(["team_id", "player_id"])["min"].sum().reset_index().sort_values(["team_id", "min"], ascending=[True, False])
+    tx = []
+    for tid, g in top.groupby("team_id"):
+        pids = g["player_id"].tolist()
+        tx.append(dict(season="2018-19", team_id=tid, player_id=pids[0], direction="out", source_kind="subtraction", txn_date="2018-07-05"))
+        if with_future:
+            tx.append(dict(season="2018-19", team_id=tid, player_id=pids[1], direction="out", source_kind="subtraction", txn_date="2018-10-20"))
+            tx.append(dict(season="2019-20", team_id=tid, player_id=pids[2], direction="out", source_kind="subtraction", txn_date="2019-07-05"))
+    tx = pd.DataFrame(tx)
+    tx["txn_date"] = pd.to_datetime(tx["txn_date"])
+    po = []
+    for season, mins in (("2016-17", 24.0), ("2017-18", 24.0)) + ((("2018-19", 60.0), ("2019-20", 60.0)) if with_future else ()):
+        for pid in top.groupby("team_id").nth(4)["player_id"].tolist():
+            for k in range(7):
+                po.append(dict(season=season, game_id=f"{season}-{pid}-{k}", game_date=pd.Timestamp(f"{season[:4]}-04-20") + pd.Timedelta(days=int(k) + 365 * (int(season[:4]) - 2016) * 0), player_id=pid, min=mins))
+    return tx, pd.DataFrame(po)
+
+
+def _write_inputs(root, tx, po):
+    (root / "processed").mkdir(parents=True)
+    tx.to_parquet(root / "processed" / "team_transactions.parquet", index=False)
+    po.to_parquet(root / "processed" / "playoff_logs.parquet", index=False)
+
+
+def test_future_dated_inputs_do_not_change_any_feature_value():
+    """Feature-level leak guard: for every player and every season the features are identical with and without the future rows
+    (and non-zero for some players, so the comparison is not vacuous)."""
+    tables = make_league()
+    h = history_for(tables)
+    pids = tables["game_logs"]["player_id"].drop_duplicates().to_numpy()
+    mats = {}
+    for name, future in (("legit", False), ("with_future", True)):
+        tx, po = _external_inputs(tables, with_future=future)
+        ctx = DepthContext.build(h, tx, po)
+        mats[name] = np.vstack([ctx.for_players(pids, np.full(len(pids), s)) for s in (2017, 2018, 2019)])
+    np.testing.assert_array_equal(mats["legit"], mats["with_future"])
+    assert (mats["legit"][:, 0] != 0).any() and (mats["legit"][:, 1] != 0).any()
+
+
+def test_future_dated_transactions_and_playoffs_do_not_change_the_projection(tmp_path, monkeypatch):
+    """The real leak guard for the file inputs: rows dated after the cutoff, next season's moves and the target season's own
+    playoffs are present in one data dir and absent in another; the projections must be identical. The legit inputs must matter."""
+    tables = make_league()
+    h = history_for(tables)
+    outs = {}
+    for name, future in (("legit", False), ("with_future", True)):
+        root = tmp_path / name
+        _write_inputs(root, *_external_inputs(tables, with_future=future))
+        monkeypatch.setenv("NBA_DATA_DIR", str(root))
+        outs[name] = BaselineDepthProjector().project(h)
+    pd.testing.assert_frame_equal(outs["legit"], outs["with_future"], check_exact=True)
+    monkeypatch.setenv("NBA_DATA_DIR", str(tmp_path / "none"))
+    assert not outs["legit"]["proj_mpg"].equals(BaselineDepthProjector().project(h)["proj_mpg"])
+
+
 def test_assert_projector_ignores_future_passes(tmp_path, monkeypatch):
     from model_testkit import TARGET
 
