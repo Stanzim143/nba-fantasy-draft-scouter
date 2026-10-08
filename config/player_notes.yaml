@@ -1,0 +1,10 @@
+# Your own judgment about players, shown next to them on the draft board as "note: ..." (ADR 0037).
+# Advisory only: a note moves no projection, rank, risk level or games estimate.
+# Match by full name (accents and case ignored) or by `player_id:`. `date` is optional free text.
+# Entries that match no board player (or more than one) are reported in the board's risk notes and skipped.
+#
+# notes:
+#   - player: Giannis Antetokounmpo
+#     note: last year's absences were contract-driven, now resolved
+#     date: 2026-10-09
+notes: []

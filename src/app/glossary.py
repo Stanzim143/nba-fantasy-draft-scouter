@@ -282,7 +282,7 @@ _RISK_OVERLAY: dict[str, Entry] = {
     ),
     "risk_flags": _e(
         "Readable text for every triggered risk source (ESPN status, preseason absence, new team, "
-        "star arrived/left; the return-flag sentence is appended here too).",
+        "star arrived/left, off-court news/absences, your own notes; the return-flag sentence is appended here too).",
         "Free text built from whichever risk sources triggered. It never changes a projection; "
         "it's shown beside proj_gp so you can judge for yourself.",
         f"{CATEGORIES}#11-risk-overlay",

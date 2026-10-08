@@ -239,7 +239,8 @@ def playoff_flags(playoffs: pd.DataFrame, logs: pd.DataFrame, scoring: dict | No
 
 def build_overlay(board: pd.DataFrame, *, preseason: pd.DataFrame | None = None, status: pd.DataFrame | None = None,
                   context: pd.DataFrame | None = None, depth: pd.DataFrame | None = None,
-                  playoffs: pd.DataFrame | None = None, news: pd.DataFrame | None = None, today=None) -> pd.DataFrame:
+                  playoffs: pd.DataFrame | None = None, news: pd.DataFrame | None = None,
+                  offcourt: pd.DataFrame | None = None, notes: pd.DataFrame | None = None, today=None) -> pd.DataFrame:
     """``board`` plus ``risk_flags`` (readable), ``risk_level`` (``""`` / ``watch`` / ``high``), ``risk_gp_haircut``
     (advisory share of projected games) and ``risk_gp`` (``proj_gp`` after that haircut). Projections are untouched."""
     today = today if today is not None else pd.Timestamp.today().normalize()
@@ -279,7 +280,8 @@ def build_overlay(board: pd.DataFrame, *, preseason: pd.DataFrame | None = None,
                 flags[i].append(sa)
             if sd:
                 flags[i].append(sd)
-    for frame, col in ((news, "news_flag"), (depth, "depth_flag"), (playoffs, "playoff_flag")):
+    for frame, col in ((news, "news_flag"), (depth, "depth_flag"), (playoffs, "playoff_flag"), (offcourt, "offcourt_flag"),
+                       (notes, "note_flag")):
         if frame is not None and len(frame):
             text = frame.drop_duplicates("player_id").set_index("player_id")[col].reindex(ids).fillna("").to_numpy()
             for i, t in enumerate(text):

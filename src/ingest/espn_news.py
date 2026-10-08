@@ -108,7 +108,7 @@ def parse_feed(payload: dict[str, Any], seen_at: datetime, id_map: pd.DataFrame 
         df["player_id"] = pd.array(df["espn_id"].map(m), dtype="Int64")
     else:
         df["player_id"] = pd.array([pd.NA] * len(df), dtype="Int64")
-    df["published"] = df["published"].dt.tz_convert(None)
+    df["published"] = pd.to_datetime(df["published"], utc=True).dt.tz_convert(None)
     for c in ("return_date", "published", "first_seen", "last_seen"):
         df[c] = pd.to_datetime(df[c]).astype("datetime64[ms]")
     return df[COLUMNS]
@@ -121,20 +121,26 @@ def read_news(base: Path | None = None) -> pd.DataFrame:
     return pd.read_parquet(path)
 
 
-def merge_news(old: pd.DataFrame | None, new: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """(merged table, rows that are new). Existing keys keep their ``first_seen`` and get the newer ``last_seen``."""
+def merge_news(old: pd.DataFrame | None, new: pd.DataFrame, *, key: list[str] | None = None,
+               columns: list[str] | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """(merged table, rows that are new). Existing keys keep their ``first_seen`` and get the newer ``last_seen``.
+    ``key`` / ``columns`` default to this table's; ``espn_offcourt`` reuses the merge with its own."""
+    key, columns = key or KEY, columns or COLUMNS
     if old is None or old.empty:
         return new.reset_index(drop=True), new
-    tagged = old[KEY].merge(new[KEY + ["last_seen"]].rename(columns={"last_seen": "_seen"}), on=KEY, how="left")
+    tagged = old[key].merge(new[key + ["last_seen"]].rename(columns={"last_seen": "_seen"}), on=key, how="left")
     old = old.copy()
     old["last_seen"] = tagged["_seen"].where(tagged["_seen"].notna(), old["last_seen"]).to_numpy()
-    fresh = new.merge(old[KEY], on=KEY, how="left", indicator=True).query("_merge == 'left_only'").drop(columns="_merge")
-    merged = pd.concat([old, fresh[COLUMNS]], ignore_index=True)
-    return merged.sort_values(["published", "note_id"], kind="mergesort").reset_index(drop=True), fresh
+    fresh = new.merge(old[key], on=key, how="left", indicator=True).query("_merge == 'left_only'").drop(columns="_merge")
+    merged = pd.concat([old, fresh[columns]], ignore_index=True)
+    return merged.sort_values(["published", key[0]], kind="mergesort").reset_index(drop=True), fresh
 
 
 def write_news(df: pd.DataFrame, base: Path | None = None) -> Path:
-    path = table_path(base)
+    return write_parquet_atomic(df, table_path(base))
+
+
+def write_parquet_atomic(df: pd.DataFrame, path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
     os.close(fd)
@@ -221,10 +227,24 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--team", default=None, help="--show: team abbreviation, e.g. MIA")
     p.add_argument("--player", default=None, help="--show: name substring (prints the long text)")
     p.add_argument("--all", action="store_true", help="--show: include players no longer in the feed")
+    p.add_argument("--no-offcourt", action="store_true", help="skip the general-news pull (espn_offcourt, ADR 0037)")
     p.add_argument("--quiet", action="store_true", help="print only failures (used by the scheduled task)")
     p.add_argument("--offline", action="store_true")
     p.add_argument("--data-dir", type=Path, default=None)
     return p
+
+
+def _pull_offcourt(client: CachedHttpClient, base: Path, *, offline: bool, quiet: bool) -> None:
+    """Best-effort second request (ESPN general news, ADR 0037): a failure here never fails the injury pull."""
+    from src.ingest import espn_offcourt
+
+    try:
+        r = espn_offcourt.run_pull(client, base, refresh=not offline)
+    except (espn_adp.EspnAdpError, OSError, ValueError) as exc:
+        print(f"off-court news pull failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+    else:
+        if not quiet:
+            print(f"off-court news: {r['in_feed']} rows in feed, {r['new']} new ({r['total']} stored)")
 
 
 def main(argv=None, *, client: CachedHttpClient | None = None, sleep: Callable[[float], None] = time.sleep,
@@ -260,6 +280,8 @@ def main(argv=None, *, client: CachedHttpClient | None = None, sleep: Callable[[
                 print(f"[{stamp}] {r['in_feed']} notes in feed, {r['new']} new ({r['total']} stored, {r['unmapped']} unmapped)")
                 for _, row in r["fresh"].sort_values("published").iterrows():
                     print(format_item(row))
+        if not args.no_offcourt:
+            _pull_offcourt(client, base, offline=args.offline, quiet=args.quiet)
         pulls += 1
         if args.watch is None or (max_pulls is not None and pulls >= max_pulls):
             return 0

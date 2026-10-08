@@ -83,7 +83,7 @@ def test_pull_rejects_a_feed_without_the_injuries_key(tmp_path):
 def test_watch_loop_sleeps_between_pulls_and_refuses_hammering(tmp_path, capsys):
     sleeps = []
     c = FakeClient(feed(note("1", "A", espn=1)))
-    rc = espn_news.main(["--watch", "10", "--data-dir", str(tmp_path)], client=c, sleep=sleeps.append, max_pulls=3)
+    rc = espn_news.main(["--watch", "10", "--no-offcourt", "--data-dir", str(tmp_path)], client=c, sleep=sleeps.append, max_pulls=3)
     assert rc == 0 and c.calls == 3 and sleeps == [600.0, 600.0]
     assert espn_news.main(["--watch", "1", "--data-dir", str(tmp_path)], client=c) == 2
 

@@ -20,6 +20,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import yaml
 
 from src.contracts import History, season_start
 from src.features import risk as R
@@ -61,6 +62,19 @@ def compute_risk(projections: pd.DataFrame, board: pd.DataFrame, history: Histor
         news = espn_news.latest_per_player(espn_news.read_news(data_dir))
     except FileNotFoundError:
         notes.append("no injury news archive: news flags skipped (run src.ingest.espn_news)")
+    reports = offcourt_news = None
+    try:
+        from src.ingest import nba_injury_reports
+
+        reports = nba_injury_reports.read_injury_reports(data_dir)
+    except FileNotFoundError:
+        notes.append("no injury-report archive: off-court (personal / not-with-team) flags skipped")
+    try:
+        from src.ingest import espn_offcourt
+
+        offcourt_news = espn_offcourt.read_offcourt(data_dir)
+    except FileNotFoundError:
+        notes.append("no off-court news archive: trade-request / holdout news flags skipped (run src.ingest.espn_news)")
     pl_games = tm_games = None
     try:
         logs, tg = nba_offseason.read_offseason_logs(data_dir), nba_offseason.read_offseason_team_games(data_dir)
@@ -74,7 +88,8 @@ def compute_risk(projections: pd.DataFrame, board: pd.DataFrame, history: Histor
     last_team = last_season_team(history.player_season_bio)
     ids = board["player_id"].to_numpy("int64")
     frames: dict[str, pd.DataFrame | None] = {"preseason": None, "status": None, "context": None, "depth": None,
-                                              "playoffs": None, "news": None}
+                                              "playoffs": None, "news": None, "offcourt": None,
+                                              "notes": None}
     if pl_games is not None:
         team_of = last_team
         if roster is not None:
@@ -88,6 +103,17 @@ def compute_risk(projections: pd.DataFrame, board: pd.DataFrame, history: Histor
         frames["status"] = R.status_flags(ids, status, today=today_ts)
     if news is not None and len(news):
         frames["news"] = R.news_flags(ids, news)
+    if reports is not None or offcourt_news is not None:
+        from src.features import offcourt as OC
+
+        frames["offcourt"] = OC.offcourt_flags(ids, reports, offcourt_news, season, today=today_ts)
+    try:
+        from src.features import offcourt as OC
+
+        frames["notes"], problems = OC.note_flags(ids, _team_names(history, projections), OC.read_notes())
+        notes.extend(problems)
+    except (ValueError, OSError, yaml.YAMLError) as exc:
+        notes.append(f"player notes unreadable ({exc})")
     if roster is not None:
         stars = set(board.loc[board["rank"] <= R.STAR_RANK, "player_id"].astype(int))
         frames["context"] = R.context_flags(roster, last_team, stars, _team_names(history, projections)).flags
@@ -113,7 +139,7 @@ def compute_risk(projections: pd.DataFrame, board: pd.DataFrame, history: Histor
         frames["preseason"].loc[~on_roster, "pre_flag"] = ""
     overlay = R.build_overlay(board[["player_id", "proj_gp"]], preseason=frames["preseason"], status=frames["status"],
                               context=frames["context"], depth=frames["depth"], playoffs=frames["playoffs"],
-                              news=frames["news"], today=today_ts)
+                              news=frames["news"], offcourt=frames["offcourt"], notes=frames["notes"], today=today_ts)
     return overlay[["player_id", *RISK_COLUMNS]], notes
 
 

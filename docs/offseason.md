@@ -182,3 +182,7 @@ College and international *production* (no compliant, machine-readable, historic
 ## Live injury news
 
 `python -m src.ingest.espn_news` pulls ESPN's injury feed (injury, body part, estimated return, RotoWire blurb) into `injury_news`; `--watch 15` repeats it in a console, `./dev schedule install --job news` repeats it unattended (every 30 minutes, ADR 0036), `--show --player Giannis` / `--team MIA --days 3` reads it back. The newest current note per player appears in `risk_flags` as `news: day-to-day, ankle (leg), est. return Oct 12`. It is advisory and changes no projection or haircut (ADR 0036). Refresh the board after a pull to see the flags.
+
+## Off-court flags and player notes
+
+Three more advisory entries in `risk_flags` (ADR 0037; none moves a projection, risk level or haircut): `7 games out for personal reasons in 2025-26` (from the archived NBA injury reports; needs 3+ games), `off-court news: trade request, Sep 12 ("headline")` (keyword screen of ESPN's general NBA news; `python -m src.ingest.espn_offcourt`, also run by every `espn_news` pull and so by the scheduled news job; `--show --days 30` lists matches from `offcourt_news`), and `note: ...` from your own `config/player_notes.yaml` (copy the commented example; match by full name or `player_id`; unmatched names show in the board's risk notes). Refresh the board to see them.
