@@ -181,4 +181,4 @@ College and international *production* (no compliant, machine-readable, historic
 
 ## Live injury news
 
-`python -m src.ingest.espn_news` pulls ESPN's injury feed (injury, body part, estimated return, RotoWire blurb) into `injury_news`; `--watch 15` repeats it, `--show --player Giannis` / `--team MIA --days 3` reads it back. The newest current note per player appears in `risk_flags` as `news: day-to-day, ankle (leg), est. return Oct 12`. It is advisory and changes no projection or haircut (ADR 0036). Refresh the board after a pull to see the flags.
+`python -m src.ingest.espn_news` pulls ESPN's injury feed (injury, body part, estimated return, RotoWire blurb) into `injury_news`; `--watch 15` repeats it in a console, `./dev schedule install --job news` repeats it unattended (every 30 minutes, ADR 0036), `--show --player Giannis` / `--team MIA --days 3` reads it back. The newest current note per player appears in `risk_flags` as `news: day-to-day, ankle (leg), est. return Oct 12`. It is advisory and changes no projection or haircut (ADR 0036). Refresh the board after a pull to see the flags.

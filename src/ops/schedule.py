@@ -1,9 +1,12 @@
 """Register the daily refresh with Windows Task Scheduler (per user, no admin) (ADR 0014).
 
     python -m src.ops.schedule install  [--times 07:30,19:00] [--final-runs-before-hours 15.5,1.75] [--draft-date ...] [--dry-run]
-    python -m src.ops.schedule status | remove | run-now [--job daily|nightly|all] [--direct]
+    python -m src.ops.schedule status | remove | run-now [--job daily|nightly|news|all] [--direct]
+    python -m src.ops.schedule install --job news [--interval-minutes 30] [--end-date YYYY-MM-DD]
 
-``status`` with no ``--job`` prints BOTH jobs (daily and nightly); every other action defaults to ``daily``.
+``status`` with no ``--job`` prints ALL jobs (daily, nightly, news); every other action defaults to ``daily``. The ``news`` job
+(ADR 0036) is a different shape: ONE repeating trigger (every ``--interval-minutes``, default 30) that pulls ESPN's injury feed,
+from now until the in-season window ends (else the day after the draft) or ``--end-date``.
 
 (also ``./dev schedule ...``). The task runs the venv's ``pythonw.exe -m src.ops.daily_refresh`` from the PRIMARY
 checkout (main), so it survives worktree removal. It is generated as Task Scheduler XML and registered with
@@ -35,11 +38,17 @@ NIGHTLY_TASK_NAME = "NBA Fantasy 2026 Nightly In-Season"
 # games have been final for 13 hours and that evening's have not started, so the run sees the newest complete game day and the
 # freshest overnight injury news before the day's lineups lock (ADR 0018). Override with --times.
 NIGHTLY_TIMES = "09:30"
+NEWS_TASK_NAME = "NBA Fantasy 2026 Injury News"
+NEWS_INTERVAL_MINUTES = 30
+MIN_NEWS_INTERVAL_MINUTES = 5     # the same floor as ``espn_news --watch`` (polite polling, ADR 0005 R2)
 JOBS = {
     "daily": {"task": TASK_NAME, "module": "src.ops.daily_refresh", "times": DEFAULT_TIMES, "limit": "PT1H", "reports": "daily", "ops": "daily_refresh",
               "what": "Daily pre-draft refresh of NBA data, ESPN snapshot, breakout watchlist and draft board (ADR 0014)"},
     "nightly": {"task": NIGHTLY_TASK_NAME, "module": "src.ops.nightly", "times": NIGHTLY_TIMES, "limit": "PT90M", "reports": "nightly", "ops": "nightly",
                 "what": "In-season nightly job: game-log ingest, ESPN league sync, rest-of-season projection, waiver/streaming/lineup recommendations (ADR 0018)"},
+    "news": {"task": NEWS_TASK_NAME, "module": "src.ingest.espn_news", "times": "", "limit": "PT5M", "reports": "news", "ops": "news",
+             "repeat": True,
+             "what": "Live ESPN injury-news pull into injury_news, repeating (advisory board flags, ADR 0036)"},
 }
 
 
@@ -98,16 +107,25 @@ def build_arguments(data_dir: Path, draft_date: date | None, extra: Sequence[str
 
 def build_task_xml(*, python_exe: Path, repo: Path, data_dir: Path, times: Sequence[str], start: date, end: date | datetime,
                    draft_date: date | None, author: str = "nba-fantasy-2026", job: str = "daily",
-                   final_runs: Sequence[datetime] = (), draft_start: datetime | None = None) -> str:
+                   final_runs: Sequence[datetime] = (), draft_start: datetime | None = None,
+                   repeat_minutes: int | None = None, first_run: datetime | None = None) -> str:
     """Task Scheduler 1.2 XML (returned as text; written UTF-16 by :func:`register`).
 
     ``end`` is a date (end of that day) or a naive machine-local datetime (exactly then). ``final_runs`` are naive
-    machine-local datetimes that get an extra one-time trigger each.
+    machine-local datetimes that get an extra one-time trigger each. ``repeat_minutes`` (the news job) replaces the daily
+    triggers with ONE time trigger at ``first_run`` (naive machine-local) that repeats every that many minutes until ``end``.
     """
     end_text = end.strftime("%Y-%m-%dT%H:%M:%S") if isinstance(end, datetime) else f"{end.isoformat()}T23:59:59"
     if end_text < f"{start.isoformat()}T00:00:00":
         raise ScheduleError(f"end {end_text} is before start date {start}")
     spec = JOBS[job]
+    if repeat_minutes is not None:
+        if repeat_minutes < MIN_NEWS_INTERVAL_MINUTES:
+            raise ScheduleError(f"--interval-minutes must be at least {MIN_NEWS_INTERVAL_MINUTES}")
+        first = (first_run or datetime.combine(start, datetime.min.time())).strftime("%Y-%m-%dT%H:%M:%S")
+        if end_text <= first:
+            raise ScheduleError(f"end {end_text} is not after the first run {first}")
+        times, final_runs = [], ()
     triggers = "\n".join(f"""    <CalendarTrigger>
       <StartBoundary>{start.isoformat()}T{t}:00</StartBoundary>
       <EndBoundary>{end_text}</EndBoundary>
@@ -120,11 +138,19 @@ def build_task_xml(*, python_exe: Path, repo: Path, data_dir: Path, times: Seque
       <EndBoundary>{end_text}</EndBoundary>
       <Enabled>true</Enabled>
     </TimeTrigger>""" for f in final_runs)
+    if repeat_minutes is not None:
+        triggers = f"""    <TimeTrigger>
+      <Repetition><Interval>PT{int(repeat_minutes)}M</Interval></Repetition>
+      <StartBoundary>{first}</StartBoundary>
+      <EndBoundary>{end_text}</EndBoundary>
+      <Enabled>true</Enabled>
+    </TimeTrigger>"""
+    report = "" if repeat_minutes is not None else f" Report: {escape(str(repo / 'reports' / spec['reports'] / 'latest.md'))}"
     return f"""<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
     <Author>{escape(author)}</Author>
-    <Description>{escape(spec['what'])}. Active {start} to {end_text}. Report: {escape(str(repo / 'reports' / spec['reports'] / 'latest.md'))}</Description>
+    <Description>{escape(spec['what'])}. Active {start} to {end_text}.{report}</Description>
   </RegistrationInfo>
   <Triggers>
 {triggers}
@@ -317,14 +343,16 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="python -m src.ops.schedule", description=__doc__.split("\n\n")[0])
     p.add_argument("action", choices=["install", "status", "remove", "run-now"])
     p.add_argument("--job", choices=sorted(JOBS) + ["all"], default=None,
-                   help="daily = pre-draft refresh (ADR 0014); nightly = in-season job (ADR 0018); all = both. "
-                        "Default: `status` shows both jobs, every other action uses daily")
+                   help="daily = pre-draft refresh (ADR 0014); nightly = in-season job (ADR 0018); news = repeating ESPN "
+                        "injury-news pull (ADR 0036); all = every job. Default: `status` shows all jobs, every other action uses daily")
     p.add_argument("--times", default=None, help=f"daily run times, machine-local HH:MM list (default {DEFAULT_TIMES} for daily, {NIGHTLY_TIMES} for nightly)")
     p.add_argument("--draft-date", default=None, help="YYYY-MM-DD; default: draft.date in config/league.yaml (also see NBA_DRAFT_DATE)")
     p.add_argument("--draft-start", default=None, help="draft start instant, e.g. 2026-10-16T18:00:00Z; default: draft.start_utc in config/league.yaml (also NBA_DRAFT_START)")
     p.add_argument("--tz", default=None, help="IANA zone of this machine's clock (default: draft.timezone from config, Pacific/Auckland)")
     p.add_argument("--final-runs-before-hours", default=DEFAULT_FINAL_HOURS,
                    help=f"extra one-time daily-job runs this many hours before the draft start (default {DEFAULT_FINAL_HOURS}; 'none' disables)")
+    p.add_argument("--interval-minutes", type=int, default=NEWS_INTERVAL_MINUTES,
+                   help=f"news: minutes between pulls (default {NEWS_INTERVAL_MINUTES}, minimum {MIN_NEWS_INTERVAL_MINUTES})")
     p.add_argument("--start-date", default=None, help="first day the triggers fire (default: today)")
     p.add_argument("--end-date", default=None, help="last day, end of day (default: the draft start instant when known, else draft date + 1)")
     p.add_argument("--repo", type=Path, default=None, help="checkout to run from (default: the primary checkout)")
@@ -370,26 +398,33 @@ def main(argv: Sequence[str] | None = None, *, runner: Runner = default_runner, 
     try:
         repo = a.repo or primary_checkout()
         if a.action == "install":
-            times = parse_times(a.times or spec["times"])
+            repeat = spec.get("repeat", False)
+            times = [] if repeat else parse_times(a.times or spec["times"])
             draft = dstart = None
             finals: list[datetime] = []
-            if a.job == "nightly":
+            first_run = None
+            if repeat:
+                start, end, first_run = news_window(a, data_dir, repo, today, local_tz, now)
+            elif a.job == "nightly":
                 start, end = nightly_window(data_dir, a.season, today, a.start_date, a.end_date)
             else:
                 start, end, draft, dstart, finals = resolve_draft_window(a, data_dir, repo, today, local_tz, now)
             py = python_exe or venv_python()
             xml = build_task_xml(python_exe=py, repo=repo, data_dir=data_dir, times=times, start=start, end=end, draft_date=draft, job=a.job,
-                                 final_runs=finals, draft_start=dstart)
+                                 final_runs=finals, draft_start=dstart,
+                                 repeat_minutes=a.interval_minutes if repeat else None, first_run=first_run)
+            when = (f"every {a.interval_minutes} minutes from {first_run:%Y-%m-%d %H:%M}" if repeat
+                    else f"daily at {', '.join(times)} from {start}")
             extra = f" plus final runs at {', '.join(f.strftime('%Y-%m-%d %H:%M') for f in finals)}" if finals else ""
             if a.dry_run:
                 out(f"# would register task {task_name!r}: {py} {build_arguments(data_dir, draft, module=spec['module'], draft_start=dstart)}\n# in {repo}, "
-                    f"daily at {', '.join(times)} from {start} to {end}{extra}\n{xml}")
+                    f"{when} to {end}{extra}\n{xml}")
                 return 0
             module_file = repo / (spec["module"].replace(".", "/") + ".py")
             if not module_file.exists():
                 raise ScheduleError(f"{repo} does not contain {module_file.relative_to(repo)}; is the feature merged into that checkout?")
             register(xml, task_name, runner, data_dir / spec["ops"], f"{spec['ops']}_task.xml")
-            out(f"registered {task_name!r}: daily at {', '.join(times)} (local time), {start} to {end}{extra}, running {py} from {repo}")
+            out(f"registered {task_name!r}: {when} (local time) to {end}{extra}, running {py} from {repo}")
             return 0
         if a.action == "remove":
             rc, text = runner(["schtasks", "/Delete", "/TN", task_name, "/F"])
@@ -397,7 +432,8 @@ def main(argv: Sequence[str] | None = None, *, runner: Runner = default_runner, 
             return 0 if rc == 0 else 1
         if a.action == "run-now":
             if a.direct:
-                return subprocess.call([str(venv_python(False)), "-m", spec["module"], "--force", "--data-dir", str(data_dir)], cwd=str(repo))
+                force = [] if spec.get("repeat") else ["--force"]       # the news pull has no run window to override
+                return subprocess.call([str(venv_python(False)), "-m", spec["module"], *force, "--data-dir", str(data_dir)], cwd=str(repo))
             rc, text = runner(["schtasks", "/Run", "/TN", task_name])
             out(text or (f"started; follow reports/{spec['reports']}/latest.md and the log" if rc == 0 else "failed"))
             return 0 if rc == 0 else 1
@@ -414,9 +450,44 @@ def _status(job: str, task_name: str, repo: Path, data_dir: Path, runner: Runner
         out(f"task {task_name!r} is not registered (install it with: ./dev schedule install --job {job})")
     else:
         out(json.dumps(info, indent=2))
-    for line in describe_health(data_dir, repo / "reports" / spec["reports"], ops=spec["ops"]):
+    lines = news_health(data_dir) if spec.get("repeat") else describe_health(data_dir, repo / "reports" / spec["reports"], ops=spec["ops"])
+    for line in lines:
         out(line)
     return 0 if info is not None else 1
+
+
+def news_health(data_dir: Path, now: datetime | None = None) -> list[str]:
+    """Freshness of the ``injury_news`` table (the news job writes no status.json): when the newest pull was and how many notes."""
+    path = data_dir / "processed" / "injury_news.parquet"
+    if not path.exists():
+        return [f"no injury_news table yet at {path}"]
+    import pandas as pd
+
+    df = pd.read_parquet(path, columns=["last_seen", "published"])
+    last = df["last_seen"].max()
+    age = ((now or datetime.now()) - last.to_pydatetime()).total_seconds() / 60
+    return [f"last pull: {last:%Y-%m-%d %H:%M} ({age:.0f} min ago); {len(df)} notes stored, newest published {df['published'].max():%Y-%m-%d %H:%M}"]
+
+
+def news_window(a: argparse.Namespace, data_dir: Path, repo: Path, today: date, injected_tz: tzinfo | None,
+                now: datetime | None) -> tuple[date, date | datetime, datetime]:
+    """(start date, end, first run) of the news job. First run: the next whole minute after now (machine-local, naive).
+
+    End: ``--end-date`` (end of that day), else the in-season window's end (so the feed is polled all season), else the
+    pre-draft window's end when the season window cannot be resolved.
+    """
+    if a.interval_minutes < MIN_NEWS_INTERVAL_MINUTES:
+        raise ScheduleError(f"--interval-minutes must be at least {MIN_NEWS_INTERVAL_MINUTES}")
+    local_now = (now or datetime.now()).replace(tzinfo=None)
+    first = local_now.replace(second=0, microsecond=0) + timedelta(minutes=1)
+    start = date.fromisoformat(a.start_date) if a.start_date else today
+    if a.end_date:
+        return start, date.fromisoformat(a.end_date), first
+    try:
+        return start, nightly_window(data_dir, a.season, today, None, None)[1], first
+    except Exception:                                         # noqa: BLE001 - any config problem falls back to the draft window
+        _, end, _, _, _ = resolve_draft_window(a, data_dir, repo, today, injected_tz, now)
+        return start, end, first
 
 
 def nightly_window(data_dir: Path, season: str | None, today: date, start_date: str | None, end_date: str | None) -> tuple[date, date]:

@@ -43,7 +43,7 @@ usage: ./dev <command>
   lint                     ruff check (falls back to a syntax check if ruff is unavailable)
   ci                       test + lint
   integrate                (from a task worktree) lock, rebase, verify, fast-forward, verify, unlock
-  schedule <action>        Task Scheduler entry: install|status|remove|run-now; --job daily (pre-draft, ADR 0014) or nightly (in-season, ADR 0018); `status` with no --job shows both
+  schedule <action>        Task Scheduler entry: install|status|remove|run-now; --job daily (pre-draft, ADR 0014), nightly (in-season, ADR 0018) or news (repeating ESPN injury-news pull, ADR 0036); `status` with no --job shows all
   setup                    create ./.venv and install the dependencies (for a fresh clone; sets nothing global)
   bootstrap [args]         rebuild the dataset from public sources and build a board (python -m src.ops.bootstrap; --help for flags)
   app                      launch the draft-board app (works with no data via the sidebar's synthetic demo mode)

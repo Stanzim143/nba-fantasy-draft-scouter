@@ -25,5 +25,13 @@ being archived is what makes that possible later; until then a hand-set haircut 
 
 ## Consequences
 
-News is only as fresh as the last pull; nothing runs it automatically yet (see `PLANNING.md`). Off-court items other than injuries
+News is only as fresh as the last pull. Off-court items other than injuries
 (suspensions appear as statuses; legal or personal news does not) are not in this feed.
+
+## Addendum 2026-10-09: scheduled
+
+`./dev schedule install --job news` registers a per-user Task Scheduler task (`NBA Fantasy 2026 Injury News`): one repeating
+trigger every `--interval-minutes` (default 30, minimum 5) from the next minute until `--end-date`, else the end of the in-season
+window (else the draft window). It runs `python -m src.ingest.espn_news --quiet` from the primary checkout, like the other jobs
+(network required, catch-up after sleep, one instance, 5 minute limit). `status --job news` reports the age of the last pull from
+the table itself; the job writes no status file or report. Failures are silent apart from the Task Scheduler result code.

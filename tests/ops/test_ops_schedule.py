@@ -1,7 +1,7 @@
 """Generated Task Scheduler XML and commands; nothing is registered."""
 import json
 import xml.etree.ElementTree as ET
-from datetime import date
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
@@ -169,3 +169,81 @@ def test_nightly_window_defaults_to_the_season_window_and_status_reads_its_own_f
     ops.mkdir()
     (ops / "status.json").write_text(json.dumps({"outcome": "ok", "run_id": "N1", "consecutive_failures": 0, "steps": {}, "report": "r"}))
     assert "N1" in sc.describe_health(tmp_path, tmp_path, ops="nightly")[0]
+
+
+# --------------------------------------------------------------------------- the repeating injury-news task (ADR 0036)
+
+def news_xml(**kw):
+    args = dict(python_exe=Path(r"C:\v\Scripts\pythonw.exe"), repo=Path(r"C:\repo"), data_dir=Path(r"C:\data"), times=[],
+                start=date(2026, 10, 9), end=date(2026, 10, 18), draft_date=None, job="news", repeat_minutes=30,
+                first_run=datetime(2026, 10, 9, 9, 7))
+    args.update(kw)
+    return sc.build_task_xml(**args)
+
+
+def test_news_xml_is_one_repeating_trigger_running_the_news_module():
+    root = ET.fromstring(news_xml().replace('encoding="UTF-16"', ""))
+    trig = root.findall("t:Triggers/*", NS)
+    assert len(trig) == 1 and trig[0].tag.endswith("TimeTrigger")
+    assert trig[0].findtext("t:Repetition/t:Interval", namespaces=NS) == "PT30M"
+    assert trig[0].findtext("t:StartBoundary", namespaces=NS) == "2026-10-09T09:07:00"
+    assert trig[0].findtext("t:EndBoundary", namespaces=NS) == "2026-10-18T23:59:59"
+    assert root.findtext("t:Settings/t:ExecutionTimeLimit", namespaces=NS) == "PT5M"
+    assert root.findtext("t:Settings/t:MultipleInstancesPolicy", namespaces=NS) == "IgnoreNew"
+    args = root.findtext("t:Actions/t:Exec/t:Arguments", namespaces=NS)
+    assert args.startswith("-m src.ingest.espn_news --quiet") and "--draft-date" not in args
+    assert "Report:" not in root.findtext("t:RegistrationInfo/t:Description", namespaces=NS)
+
+
+def test_news_interval_floor_and_window_are_enforced():
+    with pytest.raises(sc.ScheduleError, match="at least 5"):
+        news_xml(repeat_minutes=4)
+    with pytest.raises(sc.ScheduleError, match="not after the first run"):
+        news_xml(end=datetime(2026, 10, 9, 9, 0))
+
+
+def test_news_install_dry_run_and_register(tmp_path):
+    repo = tmp_path / "repo"
+    (repo / "src" / "ingest").mkdir(parents=True)
+    (repo / "src" / "ingest" / "espn_news.py").write_text("")
+    calls, lines = [], []
+    base = ["install", "--job", "news", "--repo", str(repo), "--data-dir", str(tmp_path / "d"), "--end-date", "2026-10-18"]
+    now = datetime(2026, 10, 9, 9, 6, 41)
+    kw = dict(python_exe=Path(r"C:\v\pythonw.exe"), out=lines.append, today=date(2026, 10, 9), now=now)
+    assert sc.main(base + ["--dry-run"], runner=lambda c: calls.append(c) or (0, ""), **kw) == 0
+    assert not calls and "every 30 minutes from 2026-10-09 09:07" in lines[0] and "PT30M" in lines[0]
+    assert sc.main(base + ["--interval-minutes", "15"], runner=lambda c: calls.append(c) or (0, ""), **kw) == 0
+    assert calls[0][:3] == ["schtasks", "/Create", "/TN"] and calls[0][3] == sc.NEWS_TASK_NAME
+    assert "every 15 minutes" in lines[-1]
+    xml = (tmp_path / "d" / "news" / "news_task.xml").read_bytes()
+    assert b"P\x00T\x001\x005\x00M" in xml
+    assert sc.main(base + ["--interval-minutes", "2"], runner=lambda c: (0, ""), **kw) == 2
+
+
+def test_news_install_refuses_a_checkout_without_the_module(tmp_path):
+    rc = sc.main(["install", "--job", "news", "--repo", str(tmp_path), "--data-dir", str(tmp_path), "--end-date", "2026-10-18"],
+                 runner=lambda c: (0, ""), python_exe=Path("p"), today=date(2026, 10, 9), now=datetime(2026, 10, 9, 9, 0))
+    assert rc == 2
+
+
+def test_news_health_reports_the_newest_pull(tmp_path):
+    import pandas as pd
+
+    assert "no injury_news table" in sc.news_health(tmp_path)[0]
+    (tmp_path / "processed").mkdir()
+    pd.DataFrame({"last_seen": pd.to_datetime(["2026-10-09 08:00", "2026-10-09 09:00"]).astype("datetime64[ms]"),
+                  "published": pd.to_datetime(["2026-10-08 12:00", "2026-10-09 08:30"]).astype("datetime64[ms]")}
+                 ).to_parquet(tmp_path / "processed" / "injury_news.parquet")
+    (line,) = sc.news_health(tmp_path, now=datetime(2026, 10, 9, 9, 30))
+    assert "30 min ago" in line and "2 notes" in line and "2026-10-09 08:30" in line
+
+
+def test_status_lists_the_news_job_and_the_quiet_flag_silences_the_pull(tmp_path, capsys):
+    out = []
+    sc.main(["status", "--repo", str(tmp_path), "--data-dir", str(tmp_path)], runner=lambda c: (1, "nf"), out=out.append)
+    assert sc.NEWS_TASK_NAME in " ".join(out) and "--job news" in " ".join(out)
+    from tests.ingest.test_espn_news import FakeClient, feed, note
+    from src.ingest import espn_news
+
+    assert espn_news.main(["--quiet", "--data-dir", str(tmp_path)], client=FakeClient(feed(note("1", "A", espn=1)))) == 0
+    assert capsys.readouterr().out == ""

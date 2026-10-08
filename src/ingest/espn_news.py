@@ -221,6 +221,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--team", default=None, help="--show: team abbreviation, e.g. MIA")
     p.add_argument("--player", default=None, help="--show: name substring (prints the long text)")
     p.add_argument("--all", action="store_true", help="--show: include players no longer in the feed")
+    p.add_argument("--quiet", action="store_true", help="print only failures (used by the scheduled task)")
     p.add_argument("--offline", action="store_true")
     p.add_argument("--data-dir", type=Path, default=None)
     return p
@@ -255,9 +256,10 @@ def main(argv=None, *, client: CachedHttpClient | None = None, sleep: Callable[[
                 return 1
         else:
             stamp = datetime.now().strftime("%H:%M")
-            print(f"[{stamp}] {r['in_feed']} notes in feed, {r['new']} new ({r['total']} stored, {r['unmapped']} unmapped)")
-            for _, row in r["fresh"].sort_values("published").iterrows():
-                print(format_item(row))
+            if not args.quiet:
+                print(f"[{stamp}] {r['in_feed']} notes in feed, {r['new']} new ({r['total']} stored, {r['unmapped']} unmapped)")
+                for _, row in r["fresh"].sort_values("published").iterrows():
+                    print(format_item(row))
         pulls += 1
         if args.watch is None or (max_pulls is not None and pulls >= max_pulls):
             return 0
