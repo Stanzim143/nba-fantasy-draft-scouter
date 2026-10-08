@@ -178,3 +178,7 @@ that event's cohort).
 
 College and international *production* (no compliant, machine-readable, historically complete source: ADR 0016 D3), validated injury / preseason-absence effects (no history: ADR 0016 D4;
 `roster_snapshots` and `espn_status_snapshots` accumulate for next year), and a per-team context feature. Debutants and origin *proxies* are built (ADR 0016).
+
+## Live injury news
+
+`python -m src.ingest.espn_news` pulls ESPN's injury feed (injury, body part, estimated return, RotoWire blurb) into `injury_news`; `--watch 15` repeats it, `--show --player Giannis` / `--team MIA --days 3` reads it back. The newest current note per player appears in `risk_flags` as `news: day-to-day, ankle (leg), est. return Oct 12`. It is advisory and changes no projection or haircut (ADR 0036). Refresh the board after a pull to see the flags.

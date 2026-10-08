@@ -93,6 +93,28 @@ def status_flags(board_ids, status: pd.DataFrame | None, *, today) -> pd.DataFra
     return out
 
 
+def news_flags(board_ids, news: pd.DataFrame | None) -> pd.DataFrame:
+    """``news_flag`` text per player from the live ESPN injury feed (``espn_news.latest_per_player``): the injury and
+    estimated return date. Informational only: no history exists to back-test a news effect, so it moves neither
+    ``risk_level`` nor the games haircut."""
+    ids = np.asarray(board_ids, dtype="int64")
+    out = pd.DataFrame({"player_id": ids, "news_flag": ""})
+    if news is None or news.empty:
+        return out
+    n = news.dropna(subset=["player_id"]).drop_duplicates("player_id", keep="last")
+    n = n.set_index(n["player_id"].astype("int64")).reindex(ids)
+    text = []
+    for _, r in n.iterrows():
+        if pd.isna(r.get("note_id")):
+            text.append("")
+            continue
+        what = " ".join(x for x in (r["injury_type"] or r["detail"], f"({r['body_part']})" if r["body_part"] else "") if x)
+        back = f", est. return {r['return_date']:%b %d}" if pd.notna(r["return_date"]) else ""
+        text.append(f"news: {r['status'].lower()}" + (f", {what.lower()}" if what else "") + back)
+    out["news_flag"] = text
+    return out
+
+
 @dataclass
 class ContextResult:
     flags: pd.DataFrame       # one row per rostered player
@@ -217,7 +239,7 @@ def playoff_flags(playoffs: pd.DataFrame, logs: pd.DataFrame, scoring: dict | No
 
 def build_overlay(board: pd.DataFrame, *, preseason: pd.DataFrame | None = None, status: pd.DataFrame | None = None,
                   context: pd.DataFrame | None = None, depth: pd.DataFrame | None = None,
-                  playoffs: pd.DataFrame | None = None, today=None) -> pd.DataFrame:
+                  playoffs: pd.DataFrame | None = None, news: pd.DataFrame | None = None, today=None) -> pd.DataFrame:
     """``board`` plus ``risk_flags`` (readable), ``risk_level`` (``""`` / ``watch`` / ``high``), ``risk_gp_haircut``
     (advisory share of projected games) and ``risk_gp`` (``proj_gp`` after that haircut). Projections are untouched."""
     today = today if today is not None else pd.Timestamp.today().normalize()
@@ -257,7 +279,7 @@ def build_overlay(board: pd.DataFrame, *, preseason: pd.DataFrame | None = None,
                 flags[i].append(sa)
             if sd:
                 flags[i].append(sd)
-    for frame, col in ((depth, "depth_flag"), (playoffs, "playoff_flag")):
+    for frame, col in ((news, "news_flag"), (depth, "depth_flag"), (playoffs, "playoff_flag")):
         if frame is not None and len(frame):
             text = frame.drop_duplicates("player_id").set_index("player_id")[col].reindex(ids).fillna("").to_numpy()
             for i, t in enumerate(text):

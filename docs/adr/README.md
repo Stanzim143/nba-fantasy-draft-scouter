@@ -45,6 +45,7 @@ Status as of 2026-09-29.
 | [0033](0033-season-intervals-and-injury-labels.md) | Season-total intervals, labelled NBA injury-report data, point-in-time positions not built | Accepted |
 | [0034](0034-depth-and-playoff-flags.md) | Departed-minutes and playoff-role flags in the risk overlay (descriptive, not projection inputs) | Accepted |
 | [0035](0035-depth-minutes-layer.md) | Departed-minutes and playoff-role as a validated minutes layer (`baseline_depth`); board default updated | Accepted |
+| [0036](0036-live-injury-news.md) | Live ESPN injury-news feed (`injury_news`), advisory board flags only | Accepted |
 
 ## Writing a new ADR
 

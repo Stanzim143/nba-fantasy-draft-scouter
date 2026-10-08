@@ -54,6 +54,13 @@ def compute_risk(projections: pd.DataFrame, board: pd.DataFrame, history: Histor
         status = espn_status.latest_status(espn_status.read_status(data_dir))
     except FileNotFoundError:
         notes.append("no ESPN status archive: injury-status flags skipped (run src.ingest.espn_status)")
+    news = None
+    try:
+        from src.ingest import espn_news
+
+        news = espn_news.latest_per_player(espn_news.read_news(data_dir))
+    except FileNotFoundError:
+        notes.append("no injury news archive: news flags skipped (run src.ingest.espn_news)")
     pl_games = tm_games = None
     try:
         logs, tg = nba_offseason.read_offseason_logs(data_dir), nba_offseason.read_offseason_team_games(data_dir)
@@ -67,7 +74,7 @@ def compute_risk(projections: pd.DataFrame, board: pd.DataFrame, history: Histor
     last_team = last_season_team(history.player_season_bio)
     ids = board["player_id"].to_numpy("int64")
     frames: dict[str, pd.DataFrame | None] = {"preseason": None, "status": None, "context": None, "depth": None,
-                                              "playoffs": None}
+                                              "playoffs": None, "news": None}
     if pl_games is not None:
         team_of = last_team
         if roster is not None:
@@ -79,6 +86,8 @@ def compute_risk(projections: pd.DataFrame, board: pd.DataFrame, history: Histor
                                                 pl_games, tm_games)
     if status is not None:
         frames["status"] = R.status_flags(ids, status, today=today_ts)
+    if news is not None and len(news):
+        frames["news"] = R.news_flags(ids, news)
     if roster is not None:
         stars = set(board.loc[board["rank"] <= R.STAR_RANK, "player_id"].astype(int))
         frames["context"] = R.context_flags(roster, last_team, stars, _team_names(history, projections)).flags
@@ -104,7 +113,7 @@ def compute_risk(projections: pd.DataFrame, board: pd.DataFrame, history: Histor
         frames["preseason"].loc[~on_roster, "pre_flag"] = ""
     overlay = R.build_overlay(board[["player_id", "proj_gp"]], preseason=frames["preseason"], status=frames["status"],
                               context=frames["context"], depth=frames["depth"], playoffs=frames["playoffs"],
-                              today=today_ts)
+                              news=frames["news"], today=today_ts)
     return overlay[["player_id", *RISK_COLUMNS]], notes
 
 
