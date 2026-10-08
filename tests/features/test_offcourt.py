@@ -7,6 +7,7 @@ import pytest
 from src.features import offcourt as OC
 from src.features import risk as R
 from src.ingest import espn_news, espn_offcourt
+from src.ingest.http_cache import HttpFetchError
 
 T0 = datetime(2026, 10, 9, 8, 0)
 
@@ -70,9 +71,21 @@ def test_news_keywords_match_the_target_stories_and_not_routine_news():
     assert f[3].startswith("off-court news: contract dispute, Oct 05") and f[9] == ""
 
 
+@pytest.mark.parametrize("headline,kind", [
+    ("Heat extension talks with Adebayo", ""), ("Contract negotiations continue between Knicks and Brunson", ""),
+    ("Absent from practice with ankle soreness", ""), ("He wants out of the slump", ""), ("Hawks seek a trade partner for Young", ""),
+    ("Team denies trade request rumors", ""), ("Star has not requested a trade", ""),
+    ("Star didn't report to Hawks camp", "holdout"), ("Star wants a trade out of town", "trade request"),
+    ("Star in contract standoff with Knicks", "contract dispute"), ("Star extension talks stall", "contract dispute"),
+    ("Star granted leave of absence", "leave of absence"), ("Star suspended two games", "suspension")])
+def test_keyword_precision(headline, kind):
+    t = OC.tag_news(pd.DataFrame({"headline": [headline], "description": [""]}))
+    assert t["kinds"].iloc[0] == kind
+
+
 def test_combined_flag_joins_report_and_news_parts():
     rows = [("2025-26", f"2026-01-{d:02d}", 1, "Out", "Not With Team", "") for d in range(1, 5)]
-    news = espn_offcourt.parse_feed({"articles": [article(1, "Star One wants out", [("11", "Star One")])]}, T0, ID_MAP)
+    news = espn_offcourt.parse_feed({"articles": [article(1, "Star One requests a trade", [("11", "Star One")])]}, T0, ID_MAP)
     f = OC.offcourt_flags([1, 2], reports(rows), news, "2026-27", today="2026-10-09")
     assert f["offcourt_flag"].iloc[0].startswith("4 games out for not with team in 2025-26; off-court news: trade request")
     assert f["offcourt_flag"].iloc[1] == ""
@@ -80,9 +93,9 @@ def test_combined_flag_joins_report_and_news_parts():
 
 
 def test_merge_keeps_history_and_flags_do_not_touch_projections_or_risk():
-    first = espn_offcourt.parse_feed({"articles": [article(1, "A wants out", [("11", "A")])]}, T0, ID_MAP)
+    first = espn_offcourt.parse_feed({"articles": [article(1, "A requests a trade", [("11", "A")])]}, T0, ID_MAP)
     m, _ = espn_news.merge_news(None, first, key=espn_offcourt.KEY, columns=espn_offcourt.COLUMNS)
-    again = espn_offcourt.parse_feed({"articles": [article(1, "A wants out", [("11", "A")]),
+    again = espn_offcourt.parse_feed({"articles": [article(1, "A requests a trade", [("11", "A")]),
                                                    article(2, "B holdout", [("22", "B")])]}, datetime(2026, 10, 9, 9), ID_MAP)
     m, fresh = espn_news.merge_news(m, again, key=espn_offcourt.KEY, columns=espn_offcourt.COLUMNS)
     assert len(m) == 2 and fresh["article_id"].tolist() == ["2"]
@@ -105,7 +118,7 @@ class FakeClient:
 
 
 def test_pull_writes_and_rejects_a_changed_feed_shape(tmp_path):
-    c = FakeClient({"articles": [article(1, "A wants out", [("11", "A")])]})
+    c = FakeClient({"articles": [article(1, "A requests a trade", [("11", "A")])]})
     r = espn_offcourt.run_pull(c, tmp_path, now=T0)
     assert (r["new"], r["total"]) == (1, 1) and len(espn_offcourt.read_offcourt(tmp_path)) == 1
     with pytest.raises(Exception, match="shape may have changed"):
@@ -119,7 +132,7 @@ INJ = {"injuries": [{"displayName": "T", "injuries": [{"id": "1", "athlete": {"d
 def test_injury_news_pull_also_archives_offcourt_news_and_survives_its_failure(tmp_path, capsys):
     class Good:
         def get_json(self, label, url, params=None, *, headers=None, refresh=False):
-            return {"articles": [article(1, "A wants out", [("11", "A")])]} if label == "offcourt_news" else INJ
+            return {"articles": [article(1, "A requests a trade", [("11", "A")])]} if label == "offcourt_news" else INJ
 
     class Broken:
         def get_json(self, label, url, params=None, *, headers=None, refresh=False):
@@ -129,6 +142,15 @@ def test_injury_news_pull_also_archives_offcourt_news_and_survives_its_failure(t
     assert len(espn_offcourt.read_offcourt(tmp_path)) == 1
     capsys.readouterr()
     assert espn_news.main(["--data-dir", str(tmp_path)], client=Broken()) == 0
+    assert "off-court news pull failed" in capsys.readouterr().err
+
+    class Down:
+        def get_json(self, label, url, params=None, *, headers=None, refresh=False):
+            if label == "offcourt_news":
+                raise HttpFetchError("HTTP 503")
+            return INJ
+
+    assert espn_news.main(["--data-dir", str(tmp_path)], client=Down()) == 0
     assert "off-court news pull failed" in capsys.readouterr().err
 
 

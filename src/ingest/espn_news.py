@@ -33,7 +33,7 @@ import pandas as pd
 
 from src.contracts import data_dir
 from src.ingest import espn_adp
-from src.ingest.http_cache import CachedHttpClient
+from src.ingest.http_cache import CachedHttpClient, HttpCacheError
 
 TABLE = "injury_news"
 URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/injuries"
@@ -240,7 +240,7 @@ def _pull_offcourt(client: CachedHttpClient, base: Path, *, offline: bool, quiet
 
     try:
         r = espn_offcourt.run_pull(client, base, refresh=not offline)
-    except (espn_adp.EspnAdpError, OSError, ValueError) as exc:
+    except (espn_adp.EspnAdpError, HttpCacheError, OSError, ValueError) as exc:
         print(f"off-court news pull failed: {type(exc).__name__}: {exc}", file=sys.stderr)
     else:
         if not quiet:

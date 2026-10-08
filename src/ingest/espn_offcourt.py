@@ -29,7 +29,7 @@ import pandas as pd
 from src.contracts import data_dir
 from src.ingest import espn_adp
 from src.ingest.espn_news import _fix_text, merge_news, write_parquet_atomic
-from src.ingest.http_cache import CachedHttpClient
+from src.ingest.http_cache import CachedHttpClient, HttpCacheError
 
 TABLE = "offcourt_news"
 URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/news"
@@ -152,7 +152,7 @@ def main(argv=None, *, client: CachedHttpClient | None = None) -> int:
                                         min_interval=2.0)
     try:
         r = run_pull(client, base, refresh=not args.offline)
-    except (espn_adp.EspnAdpError, OSError, ValueError) as exc:
+    except (espn_adp.EspnAdpError, HttpCacheError, OSError, ValueError) as exc:
         print(f"off-court news pull failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
     print(f"{r['in_feed']} article-athlete rows in feed, {r['new']} new ({r['total']} stored, {r['unmapped']} unmapped)")

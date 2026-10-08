@@ -33,14 +33,15 @@ NOTES_PATH = Path(__file__).resolve().parents[2] / "config" / "player_notes.yaml
 NEWS_KINDS: dict[str, re.Pattern] = {
     "trade request": re.compile(
         r"trade request|request(?:s|ed|ing)? (?:a )?trade|ask(?:s|ed|ing)? (?:for )?(?:a )?trade|ask(?:s|ed|ing)? to be traded|"
-        r"want(?:s|ed)? (?:out\b|to be traded|a trade)|seek(?:s|ing)? a trade|demand(?:s|ed)? (?:a )?trade|"
+        r"want(?:s|ed)? (?:to be traded|a trade|out of (?:town|the team|his team))|demand(?:s|ed)? (?:a )?trade|"
         r"request(?:s|ed)? (?:to be )?traded", re.I),
     "holdout": re.compile(
         r"hold-?outs?\b|hold(?:s|ing)? out of (?:camp|training)|skip(?:s|ped|ping)? (?:training )?camp|"
-        r"(?:will not|won'?t|not|fail(?:s|ed)? to) report(?:ing)? to|absent from (?:camp|practice)", re.I),
+        r"(?:will not|won'?t|not|didn'?t|did not|fail(?:s|ed)? to) report(?:ing)? to", re.I),
     "contract dispute": re.compile(
-        r"contract (?:dispute|standoff|impasse|disagreement|negotiations|talks|stalemate)|unhappy with (?:his |the )?contract|"
-        r"reject(?:s|ed)? (?:a |the )?(?:contract )?extension|extension (?:talks|negotiations|stalemate)", re.I),
+        r"(?:contract|extension) (?:dispute|standoff|impasse|disagreement|stalemate)|unhappy with (?:his |the )?contract|"
+        r"reject(?:s|ed)? (?:a |the )?(?:contract )?extension|(?:contract|extension) (?:talks|negotiations) (?:stall|break|collaps)|"
+        r"growing cloud", re.I),
     "leave of absence": re.compile(
         r"leave of absence|personal reasons|personal matter|away from the team|excused absence", re.I),
     "suspension": re.compile(r"\bsuspen(?:d|ds|ded|sion|sions)\b", re.I),
@@ -68,11 +69,15 @@ def report_kind(category: str | None, detail: str | None) -> str:
     return ""
 
 
+_DENIAL = re.compile(r"denie[sd]|denying|(?:has not|hasn'?t|never|not) request|no trade request|rumou?rs?", re.I)
+
+
 def tag_news(news: pd.DataFrame) -> pd.DataFrame:
     """``news`` plus ``kinds``: the matched keyword kinds, comma-separated ('' when none)."""
     out = news.copy()
     text = (out["headline"].fillna("") + ". " + out["description"].fillna("")).tolist()
-    out["kinds"] = [", ".join(k for k, pat in NEWS_KINDS.items() if pat.search(t)) for t in text]
+    out["kinds"] = [", ".join(k for k, pat in NEWS_KINDS.items() if pat.search(t) and not (k == "trade request" and _DENIAL.search(t)))
+                    for t in text]
     return out
 
 
