@@ -91,7 +91,7 @@ four and seasons since the last game (and any `extra` columns the projector supp
 the two previous seasons, labelled by whether the player has any game that season. Then
 
 ```
-proj_gp      = P(appear) * mu * L         (P(appear) = proj_p_appear; 1.0 for rookies and debutants)
+proj_gp      = P(appear) * mu * L         (P(appear) = proj_p_appear; 1.0 for rookies unless the rookie stage below is on, debutants fold theirs into mu)
 GP ~ 0 with probability 1 - P(appear), else L * Beta(mu nu, (1 - mu) nu);  proj_gp_sd, proj_gp_p10, proj_gp_p90 are that mixture's moments and quantiles
 ```
 
@@ -133,6 +133,11 @@ every rookie instead gets the explicit replacement-level prior: 20th-percentile 
 veteran rate prior at that role. Rookies carry `is_rookie=True`, `confidence="low"`,
 `n_hist_seasons=0`. Not projected: undrafted players and drafted players without history who are
 not in the target draft class.
+
+The games fraction above is conditional on playing. `DebutantBaselineProjector(rookie_appearance=True)` (in the board default
+`baseline_hurdle_adp_depth_rookie_offseason_debut`) adds `src/models/rookie_appearance.py`: a ridge logistic for P(the rookie plays at
+all) on log(pick), preseason and Summer League participation and minutes, fit on earlier draft classes, which becomes the rookie's
+`p_appear` (ADR 0038, including the live-only cut for a draft held mid-preseason).
 
 ## 7. Output columns
 

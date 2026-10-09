@@ -16,8 +16,9 @@ Nine comparable seasons is little, so top-12 differences are not statistically r
 with a real chance of not appearing. Backtest by risk group (`--method-checks`), plain baseline: returners after missing over half the previous season
 appear in only about 41% of cases and are projected 15.3 GP too high; part-season players +9.5 GP; rookies +3.1. The `baseline_hurdle*` models add a
 first stage, P(appear), and project the unconditional expectation: returners +1.5 GP, part-season +2.3, total-FP bias +134 to +14 (ADR 0031). What is
-still not modelled: **rookies' and debutants' own chance of not appearing** (about 10% of drafted rookies never play; they keep their draft-slot prior),
-and retirements or moves overseas before opening night beyond what the games-missed history predicts. "Prior injury" is still proxied by games missed
+still not modelled: **debutants' own chance of not appearing** beyond the stash constant and the undrafted logistic (ADR 0016), drafted rookies who
+never play any NBA game (they have no `players` row, so they are neither trained on nor scored; ADR 0038's rookie appearance stage covers drafted
+rookies who sit out their first season, from pick and preseason/Summer League participation), and retirements or moves overseas before opening night beyond what the games-missed history predicts. "Prior injury" is still proxied by games missed
 for the models without labelled data; the injury-report features (ADR 0033) add cause and duration from 2018-19 on.
 
 ## ADP-aware models read the target season's own ADP
@@ -41,12 +42,13 @@ Rate shrinkage (decay, kappa) is tuned on the training history using the minutes
 (previously the realised MPG; no material change). Age curves, kappa and decay are still estimated on the same history that is then
 projected from, without a nested holdout; the walk-forward outer loop keeps this from touching the scored season.
 
-## Season-total intervals (ADR 0033): calibrated for the hurdle models, conservative for returners, too narrow for rookies
+## Season-total intervals (ADR 0033): calibrated for the hurdle models, conservative for returners
 
 `fppg_p10/p90` are game-level quantiles (calibrated, see docs/backtest.md). The hurdle models also emit `proj_total_fp_p10/p50/p90`: a deterministic
 simulation of season-mean FPPG (a fitted relative misprojection spread by seasons of history, plus game noise) times games played (the hurdle mixture).
 Out of sample (walk-forward, ten seasons) the nominal 80% band holds 85% of realised totals overall, 82% for prime players, about 90% for returners
-(conservative: a zero floor and a wide top), and only 68% for rookies, whose chance of not appearing is not modelled and whose talent spread is the largest.
+(conservative: a zero floor and a wide top), and only 68% for rookies, whose chance of not appearing was not modelled. With the rookie appearance stage
+(ADR 0038, the board default) the rookie group's band holds 80.5% and its games bias is -0.2.
 Season-mean FPPG and games played are treated as independent. The plain `baseline` has no season-total band. The board rank is still a point-estimate
 ordering of expected season totals.
 

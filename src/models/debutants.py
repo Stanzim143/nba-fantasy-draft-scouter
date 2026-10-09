@@ -263,9 +263,11 @@ class DebutantBaselineProjector(BaselineProjector):
     def __init__(self, *args, profiles: pd.DataFrame | None = None, roster: pd.DataFrame | None = None,
                  offseason_logs: pd.DataFrame | None = None, offseason_team_games: pd.DataFrame | None = None,
                  min_analog_seasons: int = 2, add_debutants: bool = True, origin: bool = False,
-                 combine: pd.DataFrame | None = None, **kw):
+                 combine: pd.DataFrame | None = None, rookie_appearance: bool = False, **kw):
         super().__init__(*args, **kw)
         self.add_debutants, self.origin, self._combine = add_debutants, origin, combine
+        self.rookie_appearance = rookie_appearance
+        self.last_rookie_appearance = None
         self._profiles, self._roster = profiles, roster
         self._logs, self._tg = offseason_logs, offseason_team_games
         self.min_analog_seasons = min_analog_seasons
@@ -322,6 +324,8 @@ class DebutantBaselineProjector(BaselineProjector):
         fitted = self.fit(history)
         if self.origin:
             self._attach_origin(history, fitted)
+        if self.rookie_appearance:
+            self._attach_rookie_appearance(history, fitted)
         out = fitted.predict()
         veterans = out["is_rookie"].to_numpy(bool)
         out["projection_class"] = np.where(veterans, "rookie", "veteran")
@@ -346,6 +350,17 @@ class DebutantBaselineProjector(BaselineProjector):
         if combine is None:
             combine = pd.DataFrame(columns=nba_profiles.COMBINE_COLUMNS)
         fitted.rookie_adjust = make_adjuster(fitted, history, profiles, combine, self.scoring)
+
+    def _attach_rookie_appearance(self, history: History, fitted: FittedBaseline) -> None:
+        """Rookie appearance stage (``src.models.rookie_appearance``, ADR 0038): needs only the History and offseason logs."""
+        from src.models import rookie_appearance as ra
+
+        _, logs, _ = self._inputs(history)
+        live = self._live_roster_ids(history) is not None     # a roster snapshot of the target season: draft day, not a backtest
+        stage = ra.fit(history.players, history.game_logs, logs, history.target_season, live=live)
+        self.last_rookie_appearance = stage
+        if stage.enabled:
+            fitted.rookie_p_appear = ra.make_hook(stage, history.players, logs, history.target_season)
 
     def _debutant_rows(self, history: History, fitted: FittedBaseline) -> pd.DataFrame | None:
         profiles, logs, tg = self._inputs(history)

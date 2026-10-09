@@ -87,8 +87,9 @@ _IDENTITY_PROJECTION: dict[str, Entry] = {
         formula="proj_gp = mu * L  (mu = logistic(...), L = season length)",
     ),
     "proj_p_appear": _e(
-        "Modelled chance a veteran plays at least one game this season (the hurdle stage). Blank on boards built "
-        "without the hurdle model; 1.0 for rookies and debutants.",
+        "Modelled chance a player plays at least one game this season (the hurdle stage). Blank on boards built "
+        "without the hurdle model; 1.0 for debutants, and for rookies unless the model has the rookie appearance stage "
+        "(the board default does: it comes from draft pick and preseason/Summer League participation, ADR 0038).",
         "A logistic model over the same games-missed history (plus ADP and labelled-injury features when the "
         "model has them) of whether an eligible player has any game in a season. proj_gp is this times the "
         "conditional games-played mean, so a returner from a long injury who appears only ~40% of the time is "

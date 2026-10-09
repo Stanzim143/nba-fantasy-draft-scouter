@@ -10,7 +10,8 @@ Built-ins: ``"naive_last_season"``, ``"baseline"``, ``"baseline_hurdle"`` (ADR 0
 ``"baseline_roster"`` (ADR 0010), ``"baseline_transactions"`` (ADR 0011), ``"baseline_depth"`` (ADR 0035), ``"baseline_contract"`` (ADR 0013), ``"baseline_contract_terms"`` (ADR 0019), ``"baseline_coach"`` (ADR 0020) and the offseason family
 (ADR 0012): ``"baseline_offseason"`` (Summer League + preseason), ``"baseline_summer_league"`` and
 ``"baseline_preseason"`` (one context each, for the ablation), and the debutant family (ADR 0016):
-``"baseline_debut"`` (baseline plus stash and undrafted debutants) and ``"baseline_offseason_debut"``. Every
+``"baseline_debut"`` (baseline plus stash and undrafted debutants) and ``"baseline_offseason_debut"``; and the board stack plus
+the rookie appearance stage (ADR 0038), ``"baseline_hurdle_adp_depth_rookie_offseason_debut"``. Every
 projector returned satisfies the ``Projector`` protocol from ``src.contracts`` and its ``.name``
 equals the registry name, so the ``model`` column of its projections identifies it.
 """
@@ -79,6 +80,9 @@ _REGISTRY: dict[str, Callable[..., Projector]] = {
         **{"base": AdpDebutantProjector(config=_HURDLE), "name": "baseline_hurdle_adp_offseason_debut", **kw}),
     "baseline_hurdle_adp_depth_offseason_debut": lambda **kw: BaselineOffseasonProjector(
         **{"base": AdpDepthDebutantProjector(config=_HURDLE), "name": "baseline_hurdle_adp_depth_offseason_debut", **kw}),
+    "baseline_hurdle_adp_depth_rookie_offseason_debut": lambda **kw: BaselineOffseasonProjector(
+        **{"base": AdpDepthDebutantProjector(config=_HURDLE, rookie_appearance=True),
+           "name": "baseline_hurdle_adp_depth_rookie_offseason_debut", **kw}),
     "baseline_offseason_rich": lambda **kw: BaselineOffseasonProjector(
         **{"components": True, "name": "baseline_offseason_rich", **kw}),
     "baseline_summer_league_rich": lambda **kw: BaselineOffseasonProjector(

@@ -68,6 +68,7 @@ class FittedBaseline:
     rookie_adjust: object = None  # callable(pids) -> (mpg_scale, games_scale, rate_scale) arrays, only set by src.models.debutants (origin option)
     appearance: AppearanceModel | None = None  # hurdle stage of availability (ADR 0031), only set when config.appearance_hurdle
     season_uncertainty: SeasonFppgUncertainty | None = None  # season-mean FPPG spread (ADR 0033), only set when config.season_intervals
+    rookie_p_appear: object = None  # callable(pids) -> P(rookie appears), only set by src.models.debutants (rookie_appearance option, ADR 0038)
 
     # ------------------------------------------------------------------ projection
     def active_player_ids(self) -> np.ndarray:
@@ -130,10 +131,15 @@ class FittedBaseline:
         age = self.panel_data.ages.at(pids, self.target_start)
         pick = pick_effective(pl["draft_number"].to_numpy(), pl["draft_round"].to_numpy())
         if self.rookie_adjust is None:
-            return self.prior_rows(pids, pick, group, age)
-        m_r, f_r, k_r = self.rookie_adjust(pids)
-        prior_f = np.clip(self.rookie_prior.predict("f", pick, group, age), 0.02, 0.985)
-        return self.prior_rows(pids, pick, group, age, mpg_scale=m_r, mu_f=np.clip(prior_f * f_r, 0.02, 0.985), rate_scale=k_r)
+            rows = self.prior_rows(pids, pick, group, age)
+        else:
+            m_r, f_r, k_r = self.rookie_adjust(pids)
+            prior_f = np.clip(self.rookie_prior.predict("f", pick, group, age), 0.02, 0.985)
+            rows = self.prior_rows(pids, pick, group, age, mpg_scale=m_r, mu_f=np.clip(prior_f * f_r, 0.02, 0.985),
+                                   rate_scale=k_r)
+        if self.rookie_p_appear is not None:
+            rows["p_appear"] = np.asarray(self.rookie_p_appear(pids), float)
+        return rows
 
     def prior_rows(self, pids: np.ndarray, pick: np.ndarray, group: np.ndarray, age: np.ndarray,
                    mpg_scale: float | np.ndarray = 1.0, mu_f: np.ndarray | None = None,
@@ -150,7 +156,7 @@ class FittedBaseline:
             out[name] = np.clip(v if spec.kind == "pct" else v * rate_scale, lo, hi)
         out["data_weight"] = np.zeros(len(pids))
         out["mu_f"] = np.clip(rp.predict("f", pick, group, age), 0.02, 0.985) if mu_f is None else np.asarray(mu_f, float)
-        out["p_appear"] = np.ones(len(pids))     # the appearance stage covers veterans only (rookies keep their draft-slot prior)
+        out["p_appear"] = np.ones(len(pids))     # veterans' appearance stage does not apply; _rookies may override (rookie_p_appear)
         out["z_hat"] = np.ones(len(pids))
         out["n_hist_seasons"] = np.zeros(len(pids), dtype=int)
         out["is_rookie"] = np.ones(len(pids), dtype=bool)
@@ -274,6 +280,11 @@ class FittedBaseline:
         out["fppg_p10"], out["fppg_p50"], out["fppg_p90"] = lo, mid, hi
         if self.appearance is None:
             gp_sd, gp_lo, gp_hi = self.availability.distribution(d["mu_f"].to_numpy(float), L)
+            part = p_appear < 1.0   # rookie appearance stage without the hurdle config (ADR 0038): mixture band on those rows only
+            if part.any():
+                _, m_sd, m_lo, m_hi = gp_mixture(self.availability, d["mu_f"].to_numpy(float)[part], p_appear[part], L)
+                gp_sd, gp_lo, gp_hi = (np.where(part, 0.0, x) for x in (gp_sd, gp_lo, gp_hi))
+                gp_sd[part], gp_lo[part], gp_hi[part] = m_sd, m_lo, m_hi
         else:
             _, gp_sd, gp_lo, gp_hi = gp_mixture(self.availability, d["mu_f"].to_numpy(float), p_appear, L)
             out["proj_p_appear"] = p_appear

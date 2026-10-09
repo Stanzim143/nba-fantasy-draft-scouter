@@ -184,7 +184,7 @@ plus how many of the last four seasons he played and how long ago the last one w
 historical (eligible player, season) row (eligible = played in one of the two previous seasons, the same rule the target season uses) labelled by whether the player has
 any game that season. Then `proj_gp = proj_p_appear * mu * L`, games played is `0` with probability `1 - proj_p_appear` and `L * Beta(mu*nu, (1-mu)*nu)` otherwise, and
 `proj_gp_sd` / `proj_gp_p10` / `proj_gp_p90` are the moments and quantiles of that mixture (`gp_mixture`; a player with more than a 10% chance of not playing has a zero floor).
-Rookies and debutants keep their draft-slot prior (`proj_p_appear = 1`). Real ten-season result (backtest, walk-forward): returners' games-played bias `+15.3` to `+1.5`, total-FP
+Debutants keep `proj_p_appear = 1`; drafted rookies do too unless the model has the rookie appearance stage (`*_rookie_*`, the board default), which sets it from draft pick and preseason/Summer League participation (ADR 0038). Real ten-season result (backtest, walk-forward): returners' games-played bias `+15.3` to `+1.5`, total-FP
 bias `+134` to `+14`, MAE of total FP `422.5` to `367.5`, Spearman `0.784` to `0.810` (10 of 10 seasons); P(appear) is calibrated out of sample (Brier `0.113` vs `0.209` for the base rate).
 
 ### 4.3 Total: `proj_total_fp`
@@ -719,7 +719,7 @@ ad hoc — this document remains the deep reference.
 | `vorp` | `proj_total_fp` minus replacement total | 8 |
 | `vorp_per_game` | `proj_fppg` minus replacement FPPG | 8 |
 | `fppg_p10`, `fppg_p50`, `fppg_p90` | floor, median, ceiling of a single game's FP | 5 |
-| `proj_p_appear` | chance a veteran plays at least one game (hurdle models only; 1.0 for rookies and debutants) | 4.2 |
+| `proj_p_appear` | chance a player plays at least one game (hurdle models only; 1.0 for debutants, and for rookies without the rookie appearance stage, ADR 0038) | 4.2 |
 | `proj_total_fp_p10`, `proj_total_fp_p50`, `proj_total_fp_p90` | floor, median, ceiling of the season total (hurdle models only) | 4.4 |
 | `tier` | value-cliff group, 1 best, last = at or below replacement | 9 |
 | `is_rookie` | current draft class | 6 |

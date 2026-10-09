@@ -193,7 +193,7 @@ def _run_live_sync(league_id: int, my_team_id: int | None, *, force: bool) -> No
             "Mark them manually below.")
 
 
-DEFAULT_REAL_MODEL = "baseline_hurdle_adp_depth_offseason_debut"
+DEFAULT_REAL_MODEL = "baseline_hurdle_adp_depth_rookie_offseason_debut"
 
 
 def _default_model() -> str:
@@ -218,7 +218,8 @@ def _sidebar() -> None:
                                  if st.session_state.board_meta.get("model", default_model) in available_projectors()
                                  else 0,
                                  help=f"`{DEFAULT_REAL_MODEL}` is the best measured model on real data (hurdle availability, "
-                                      "ADP as a preseason signal, Summer League / preseason layer, debutants; ADR 0031/0032). "
+                                      "ADP as a preseason signal, depth minutes, rookie appearance, Summer League / preseason layer, "
+                                      "debutants; ADR 0031/0032/0035/0038). "
                                       "`baseline` is the plain model and the one to use with the synthetic demo.")
     teams_override = st.sidebar.number_input("Teams (0 = use league config)", min_value=0, max_value=30,
                                              value=st.session_state.board_meta.get("teams") or 0)
