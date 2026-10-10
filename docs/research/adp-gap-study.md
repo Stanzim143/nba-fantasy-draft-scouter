@@ -39,6 +39,12 @@ Run: `python -m src.backtest.adp_gap collect` (about 25 minutes, under the compu
 `<data dir>/cache/adp-gap/baseline_hurdle_adp_depth_rookie_offseason_debut__<sha>.parquet`. 2,586 listed, projected
 player-seasons; ADP lists 147-149 players in 2016-17 and 2017-18 and 230-346 after.
 
+Caveats. Historical ESPN ADP is a whole-season average that includes late drafts (`docs/research/espn-api-findings.md`,
+ADR 0007), not a strict pre-season snapshot; that flatters historical ADP, so the null below is conservative. The
+motivating gap (`docs/project-overview.md`: ADP top-12 0.620 against the board stack's 0.533) comes from a different
+comparison (the standalone ADP benchmark, other seasons); in this study's frame (2018-19..2025-26, whole projected
+universe) the blend gets 0.552 against 0.573 for pure ADP order, so most of that gap is already closed by the blend.
+
 **Where ADP's side wins** (|rank_delta| >= 10; "seasons" = seasons in which ADP wins the majority):
 
 | tier (better of the two ranks) | disagreements | ADP right | seasons | ADP higher than model | ADP lower than model |
@@ -54,11 +60,14 @@ player ADP has lower (64%): the deep "sleepers" are the model's edge.
 
 By player type (one label per player, priority rookie > sophomore > 31+ > team change > prior GP < 50% > preseason > contract year; descriptors fixed before the run): the only clean, consistent cell is
 **rookies ADP ranks above the model** (109 disagreements, ADP right 0.76, 9/9 seasons); rookies ADP ranks *below*
-the model go the model's way (0.28). Team changers lean ADP slightly in both directions (0.55, 7/9 seasons). Veterans
+the model go the model's way (0.28). Recomputed against the walk-forward blend rank (what the board shows as
+`blend_rank`, scored seasons only): ADP above the blend by 10+ ranks, 85 rookies, ADP right 0.75, 8/8 seasons; ADP
+below, 53 rookies, ADP right 0.30. Team changers lean ADP slightly in both directions (0.55, 7/9 seasons). Veterans
 31+, sophomores, contract-year players and "other" are coin flips (0.48-0.51). "Preseason up" is 0.83 when ADP is
 higher and 0.15 when lower, but on 36 and 26 rows. ("Preseason down" catches 502 rows because starters' preseason
 FPPG is routinely lower than their season FPPG; it is not a role signal.) These rates compare against the raw model
-rank, not the blend.
+rank, not the blend, except where stated. They rank outcomes within the listed set with non-players at 0 FP, which
+differs from the backtest metrics (`metrics.select_arrays`), so they are not hit rates.
 
 **Pre-registered corrections against the ADR 0032 blend** (8 scored seasons 2018-19..2025-26; the blend itself beats
 the model by +0.060 top-50 [+0.030, +0.088], 7/8, as in ADR 0032):
@@ -70,11 +79,22 @@ the model by +0.060 top-50 [+0.030, +0.088], 7/8, as in ADR 0032):
 
 Season means: blend top-12/24/50/100 0.552 / 0.641 / 0.730 / 0.716; B 0.562 / 0.667 / 0.728 / 0.729.
 
-**Verdict: null.** Neither correction meets the rule (top-50 `improves` with >= 5 wins): A is worse at the top
-(it over-fits 19 coefficients with interactions to ~2,000 rows), B ties the blend on top-50. B's top-24 and top-100
-gains are significant but won in only 4/8 and 5/8 seasons, were not the primary metric, and come from one of two
-tested corrections; reading them as real would be tuning on the test. Nothing was implemented; the blend, the board
-default model and `blend_rank` are unchanged. The residual structure is real but small: once the blend has ADP in it,
-the market's extra knowledge is not predictable from age, experience, team change, prior availability, preseason or
-contract year beyond what the blend already uses. The one cell worth a human eye on draft day is a rookie the market
-takes well above our rank: the market was right three times in four.
+**Verdict: null on the pre-registered rule; top-12/24 inconclusive.** Neither correction meets the rule (top-50
+`improves` with >= 5 wins): A is worse at the top (19 coefficients with interactions on ~2,000 rows), B ties the blend
+on top-50. Power differs by metric. With 8 scored seasons the per-season paired top-12 differences have sd
+0.045-0.074, so the minimal detectable effect (80% power, two-sided 5%) is about 0.05-0.09 for top-12, about 0.035 for
+top-24 and about 0.019 for top-50: **top-50 is an adequately powered null; top-12 and top-24 are inconclusive
+(MDE about 0.05-0.09)**, not evidence of no effect. The ceiling is low anyway: on the same seasons and universe, pure
+ADP order beats the blend by only +0.021 top-12 [-0.021, +0.073], 2/8 seasons. So: the descriptors tested here add
+nothing detectable to the blend at top-50, and at the very top any remaining edge is too small for 8 seasons to show.
+
+**A lead, not a result: ADP order in ranks 51-100.** The most consistent signal is in the 51-100 tier. Pure ADP order
+beats the blend on top-100 hit by +0.020 [+0.006, +0.039], 6/8 seasons; correction B's top-100 lift (+0.013
+[+0.001, +0.025], 5/8) points the same way, its walk-forward fit chose w = 1.0 (ADP order) for the 51-100 tier in 8/8
+seasons, and ADP is right in 60% of disagreements there in 10/10 seasons. It was not pre-registered (found among
+4 arms x 6 metrics, post hoc), so it does not justify an implementation now; it is a pre-registered follow-up in
+`PLANNING.md`.
+
+Nothing was implemented; the blend, the board default model and `blend_rank` are unchanged. The draft-day reading:
+when ADP takes a rookie 10+ places above our `blend_rank`, the market was right three times in four (8/8 seasons);
+and in the middle rounds (around picks 51-100) lean towards ADP order when two players are close on `blend_rank`.
