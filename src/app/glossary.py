@@ -1007,6 +1007,40 @@ _EXTERNAL_RANKINGS: dict[str, Entry] = {
 }
 
 # --------------------------------------------------------------------------------------------
+# Draft availability (ADR 0040), the "Next pick" tab
+# --------------------------------------------------------------------------------------------
+
+_DRAFT_AVAILABILITY: dict[str, Entry] = {
+    "market_adp": _e(
+        "The draft position the simulated opponents pick by: ESPN ADP, or after every ADP for a player with none.",
+        "ESPN ADP with ties broken by board rank. A player with no ADP is placed after every player with one, in board "
+        "order. With no ADP on the board at all (synthetic demo) the board rank stands in for it.",
+        "docs/adr/0040-draft-availability.md",
+    ),
+    "p_avail_next": _e(
+        "Chance he is still on the board at your next turn if you pass on him now (simulated, unvalidated noise).",
+        "Share of simulated drafts in which the opponents picking before your next turn leave him. Opponents take the "
+        "lowest market_adp + noise, with noise sd = 1 + 0.2 x ADP picks (capped at 25), a heuristic never fitted to "
+        "real drafts. Your own picks in between are assumed not to take him. Advisory: rank and VORP are unchanged.",
+        "docs/adr/0040-draft-availability.md",
+        formula="share of sims where fewer than k players score below him; score = market_adp + sd * N(0,1)",
+    ),
+    "p_avail_after": _e(
+        "Chance he is still on the board at your turn after next (same simulated drafts as p_avail_next).",
+        "Same model as p_avail_next, counting the opponent picks up to your second upcoming turn. Blank when you "
+        "have only one pick left.",
+        "docs/adr/0040-draft-availability.md",
+    ),
+    "vorp_at_risk": _e(
+        "VORP x (1 - p_avail_next): a sort key for 'take him now'. High = valuable and unlikely to come back.",
+        "A heuristic, not an expected loss: it ignores who else would be there at your next turn. Negative VORP "
+        "counts as zero.",
+        "docs/adr/0040-draft-availability.md",
+        formula="max(vorp, 0) * (1 - p_avail_next)",
+    ),
+}
+
+# --------------------------------------------------------------------------------------------
 # Assemble the registry and groups
 # --------------------------------------------------------------------------------------------
 
@@ -1026,6 +1060,7 @@ GROUPS: list[tuple[str, dict[str, Entry]]] = [
     ("Coaches (ADR 0020)", _COACHES),
     ("Trade analyzer (ADR 0027)", _TRADE),
     ("External rankings comparison (ADR 0028)", _EXTERNAL_RANKINGS),
+    ("Draft availability (ADR 0040)", _DRAFT_AVAILABILITY),
 ]
 
 #: Every column, name -> Entry, flattened for lookup.

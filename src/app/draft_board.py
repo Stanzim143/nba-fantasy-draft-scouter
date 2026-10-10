@@ -56,6 +56,7 @@ from src.contracts import raw_dir, season_start
 from src.ingest.espn_league import SOURCE as ESPN_SOURCE
 from src.ingest.espn_league import ESPNLeagueClient
 from src.models.registry import available_projectors
+from src.value import draft_sim
 from src.value.breakouts import SORT_OPTIONS, select_watchlist
 from src.value.league import load_league
 from src.value.positions import ESPN_POSITIONS
@@ -489,6 +490,51 @@ def _need_tab(board: pd.DataFrame) -> None:
                 use_container_width=True, hide_index=True)
 
 
+def _next_pick_tab(board: pd.DataFrame) -> None:
+    """ADR 0040: P(still available at my next turn) per player. Advisory: rank and VORP are untouched."""
+    st.caption(
+        "Will he still be there at your next pick? Simulated opponents draft by ESPN ADP with noise. **The noise is an "
+        "unvalidated heuristic** (sd = 1 + 0.2 x ADP picks): ESPN publishes no spread and we have no record of real "
+        "draft positions. `vorp_at_risk` = VORP x (1 - p_avail_next): the high ones are the players to take now. "
+        "Rank and VORP are unchanged (ADR 0040).")
+    try:
+        cfg = _cached_league_config()["league"]
+    except (FileNotFoundError, KeyError) as e:
+        st.error(f"Could not load league config: {e}")
+        return
+    teams = int(st.session_state.board_meta.get("teams") or cfg["teams"])
+    rounds = int(cfg["roster"]["size"])
+    state = st.session_state.draft_state
+    c1, c2 = st.columns(2)
+    manual_slot = c1.number_input(f"My draft slot (1-{teams}; 0 = auto)", min_value=0, max_value=teams, value=0,
+                                  step=1, key="ns_slot")
+    manual_pick = c2.number_input("Current overall pick (0 = picks marked so far + 1)", min_value=0,
+                                  max_value=teams * rounds + 1, value=0, step=1, key="ns_pick")
+    season = st.session_state.board_meta.get("season", "2026-27")
+    league_id = st.session_state.get("live_sync_league_id") or live_sync.league_id_from_env()
+    team_id = st.session_state.get("live_sync_my_team_id") or live_sync.default_team_id()
+    slot, source = draft_sim.resolve_slot(
+        teams, manual=int(manual_slot), pick_order=draft_sim.load_pick_order(league_id, season), team_id=team_id,
+        my_pick_nos=[p.pick_no for p in state.picks if p.drafted_by == ME])
+    if slot is None:
+        st.info(f"Draft slot {source}.")
+        return
+    current = int(manual_pick) or len(state) + 1
+    res = draft_sim.availability_table(board, state.drafted_ids, current_pick=current, slot=slot, teams=teams,
+                                       rounds=rounds)
+    when = "you are **on the clock**; " if res.on_the_clock else ""
+    turns = ", ".join(f"#{t} ({k} opponent picks before it)" for t, k in zip(res.targets, res.opponent_picks))
+    st.write(f"Slot **{slot}** of {teams} ({source}), current pick **#{current}**: {when}your next turns {turns or 'none'}.")
+    for note in res.notes:
+        st.caption(note)
+    if res.table.empty or not res.targets:
+        return
+    sort_by = st.radio("Sort by", ["rank", "vorp_at_risk", "p_avail_next"], horizontal=True, key="ns_sort")
+    shown = res.table.sort_values(sort_by, ascending=sort_by != "vorp_at_risk", kind="stable")
+    cols = [c for c in draft_sim.TABLE_COLUMNS if c in shown.columns]
+    st.dataframe(shown[cols], column_config=_column_config(cols), use_container_width=True, hide_index=True)
+
+
 def _drafted_tab(board: pd.DataFrame) -> None:  # noqa: ARG001 - kept for a consistent tab signature
     state = st.session_state.draft_state
     df = state_to_dataframe(state)
@@ -776,9 +822,9 @@ def main() -> None:
                    "ADP refresh) — it always rebuilds from current data, never a stale cache.")
 
     (tab_best, tab_sugg, tab_need, tab_drafted, tab_full, tab_break, tab_risk, tab_txn, tab_coach,
-     tab_glossary) = st.tabs(
+     tab_next, tab_glossary) = st.tabs(
         ["Best available", "Suggestions", "Best available by need", "Drafted", "Full board",
-         "Breakouts", "Debutants & risk", "Transactions", "Coaches", "Glossary"])
+         "Breakouts", "Debutants & risk", "Transactions", "Coaches", "Next pick", "Glossary"])
     with tab_best:
         _best_available_tab(board)
     with tab_sugg:
@@ -797,6 +843,8 @@ def main() -> None:
         _transactions_tab(board)
     with tab_coach:
         _coaches_tab(board)
+    with tab_next:
+        _next_pick_tab(board)
     with tab_glossary:
         _glossary_tab()
 

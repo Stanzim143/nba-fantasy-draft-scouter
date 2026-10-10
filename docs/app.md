@@ -63,6 +63,12 @@ and console/server logs were clean throughout — see `PLANNING.md` section 1a. 
   as `need_score` and `need_adj_vorp` alongside the unmodified `vorp`. A documented, unvalidated
   heuristic (a flat VORP-points bonus scaled by how open a position still is), not a projection —
   with an empty roster it falls back to (is rank-identical to) plain best-available-by-VORP.
+- **Next pick tab** (ADR 0040): for each undrafted player, the chance he is still there at your next turn and the one after
+  (`p_avail_next`, `p_avail_after`), from simulated opponents drafting by ESPN ADP with noise, and `vorp_at_risk` (VORP x
+  (1 - p_avail_next)) to spot who to take now. Your slot comes from the ESPN league's draft order and your team id
+  (`ESPN_LEAGUE_ID` / `ESPN_TEAM_ID`, after `python -m src.ingest.espn_league`), else your first recorded pick; on draft day,
+  type it in if the tab says it is unknown. The current pick is picks marked so far + 1 (override on the tab). The noise is
+  an unvalidated heuristic; traded picks are not modelled. Advisory: rank and VORP are unchanged.
 - **Shows ADP and the model-vs-market gap** (`adp`, `adp_gap`) next to the projection whenever an ADP file is ingested; a missing or
   unusable ADP file only leaves the columns out (the reason is in `board.attrs["adp_note"]`). The board includes the incoming rookie
   class once `python -m src.ingest.nba_incoming` has run.

@@ -203,7 +203,7 @@ def test_every_st_dataframe_call_site_passes_column_config():
         stmt = source[idx:i + 1]
         assert "column_config=" in stmt, f"st.dataframe call with no column_config:\n{stmt}"
         idx = i + 1
-    assert calls == 17, f"expected 17 st.dataframe call sites in draft_board.py, found {calls}"
+    assert calls == 18, f"expected 18 st.dataframe call sites in draft_board.py, found {calls}"
 
 
 def test_trade_analyzer_tab_dataframe_call_sites_pass_column_config():
