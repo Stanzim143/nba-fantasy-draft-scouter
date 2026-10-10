@@ -50,3 +50,46 @@ def test_next_pick_tab_asks_for_slot_then_shows_probabilities(monkeypatch, tmp_p
     assert shown["p_avail_next"].between(0, 1).all() and len(shown) == 40
     assert "board rank" in " ".join(c.value for c in tab.caption)  # no ADP: the proxy is announced
     pd.testing.assert_frame_equal(board, before)
+
+
+def test_take_now_or_wait_panel_on_the_clock_back_to_back_and_off_the_clock(monkeypatch, tmp_path):
+    """ADR 0044: the panel waits until the user is on the clock, then shows the top options; at the turn it
+    says waiting costs nothing. The board is never changed."""
+    at_mod = pytest.importorskip("streamlit.testing.v1")
+    from src.app import live_sync, loader
+    from src.value.league import load_league
+
+    monkeypatch.setenv("NBA_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(live_sync, "load_dotenv_file", lambda *_a, **_k: False)
+    for var in ("ESPN_LEAGUE_ID", "ESPN_TEAM_ID"):
+        monkeypatch.delenv(var, raising=False)
+    board = _board()
+    before = board.copy(deep=True)
+    monkeypatch.setattr(loader, "load_board", lambda *_a, **_k: board)
+    teams = int(load_league()["league"]["teams"])
+
+    at = at_mod.AppTest.from_file(str(PAGE), default_timeout=120)
+    at.run()
+    [b for b in at.sidebar.button if b.label.startswith("Load")][0].click()
+    at.run()
+    tab = next(t for t in at.tabs if t.label == "Next pick")
+    tab.number_input(key="ns_slot").set_value(5)
+    at.run()
+    tab = next(t for t in at.tabs if t.label == "Next pick")
+    assert "Not your pick yet" in " ".join(i.value for i in tab.info)
+
+    tab.number_input(key="ns_pick").set_value(5)
+    at.run()
+    assert not at.exception, at.exception
+    tab = next(t for t in at.tabs if t.label == "Next pick")
+    panel = tab.dataframe[0].value
+    assert {"value_now", "p_avail_next", "wait_cost", "reason"} <= set(panel.columns) and len(panel) == 5
+    assert "playoff_fp" not in panel.columns
+
+    tab.number_input(key="ns_slot").set_value(teams)
+    tab.number_input(key="ns_pick").set_value(teams)
+    at.run()
+    assert not at.exception, at.exception
+    tab = next(t for t in at.tabs if t.label == "Next pick")
+    assert "costs nothing" in " ".join(str(m.value) for m in tab.markdown)
+    pd.testing.assert_frame_equal(board, before)

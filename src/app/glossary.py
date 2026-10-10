@@ -1082,6 +1082,52 @@ _DRAFT_AVAILABILITY: dict[str, Entry] = {
 }
 
 # --------------------------------------------------------------------------------------------
+# Take now or wait (ADR 0044), the panel on the "Next pick" tab
+# --------------------------------------------------------------------------------------------
+
+_PICK_DECISION: dict[str, Entry] = {
+    "value_now": _e(
+        "What taking him now is worth: his VORP, or need-adjusted VORP when that box is ticked.",
+        "The value the take-now-or-wait panel optimises. Plain `vorp` by default; `need_adj_vorp` (ADR 0026) when "
+        "selected, held fixed for the next pick (your need after this pick is not re-scored).",
+        "docs/adr/0044-take-now-or-wait.md",
+    ),
+    "next_best": _e(
+        "Expected best value left at your next pick if you take him now (same simulated drafts as p_avail_next).",
+        "In each simulated draft he is removed from the pool, the opponents take their picks before your next turn, "
+        "and the best remaining value is what your next pick gets; averaged over the draws. 0 if nobody is left.",
+        "docs/adr/0044-take-now-or-wait.md",
+        formula="mean over draws of max(value of players still there at your next pick | he is taken now)",
+    ),
+    "two_pick": _e(
+        "value_now + next_best: expected value of this pick plus your next one. The top row maximises it.",
+        "A two-pick lookahead only: later turns, opponents' roster needs and your changed need are not modelled. "
+        "Built on the simulator's unvalidated noise, so treat small differences as ties.",
+        "docs/adr/0044-take-now-or-wait.md",
+        formula="value_now + next_best",
+    ),
+    "wait_cost": _e(
+        "Expected two-pick value lost by passing on him now. Positive only for the recommended pick (its margin); "
+        "0 or below means passing costs nothing.",
+        "two_pick of taking him now minus the best two_pick of taking anyone else now (which still gets him at your "
+        "next pick in the draws where he survives). About 0 for the top two when your picks are back to back.",
+        "docs/adr/0044-take-now-or-wait.md",
+        formula="two_pick(him) - max over others of two_pick(other)",
+    ),
+    "pos_next_best": _e(
+        "Expected best value at his position (G, F or C, by the first letter) left at your next pick if you take him now.",
+        "Same draws as next_best, restricted to his coarse position group; blank when nobody at that position would "
+        "be left. value_now minus this is the 'next-best at his position is N lower' in the reason.",
+        "docs/adr/0044-take-now-or-wait.md",
+    ),
+    "reason": _e(
+        "A one-line plain-English summary of the take-now-or-wait numbers for this player.",
+        "Generated from p_avail_next, wait_cost and pos_next_best; advisory only.",
+        "docs/adr/0044-take-now-or-wait.md",
+    ),
+}
+
+# --------------------------------------------------------------------------------------------
 # Assemble the registry and groups
 # --------------------------------------------------------------------------------------------
 
@@ -1103,6 +1149,7 @@ GROUPS: list[tuple[str, dict[str, Entry]]] = [
     ("Trade analyzer (ADR 0027)", _TRADE),
     ("External rankings comparison (ADR 0028)", _EXTERNAL_RANKINGS),
     ("Draft availability (ADR 0040)", _DRAFT_AVAILABILITY),
+    ("Take now or wait (ADR 0044)", _PICK_DECISION),
 ]
 
 #: Every column, name -> Entry, flattened for lookup.

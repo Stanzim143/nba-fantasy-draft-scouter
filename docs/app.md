@@ -70,6 +70,11 @@ and console/server logs were clean throughout — see `PLANNING.md` section 1a. 
   type it in if the tab says it is unknown. The current pick is picks marked so far + 1 (override on the tab). The noise is
   fitted on the league's past drafts but still rough, so `p_next_lo`/`p_next_hi` show its range; the placeholder team's
   autodraft and traded picks are not modelled. Advisory: rank and VORP are unchanged.
+- **Take now or wait?** (ADR 0044), at the top of the Next pick tab when you are on the clock: the top five options by
+  `two_pick` = value now + expected best value left at your next pick, from the same simulated drafts, with `p_avail_next`,
+  `wait_cost` (two-pick value lost by passing on him) and a one-line reason. Two picks only; tick the box to use `need_adj_vorp`;
+  `playoff_fp` breaks exact ties. A warning appears when the pick changes at the low or high end of the simulator's noise band.
+  At back-to-back picks it says waiting costs nothing; at your last pick it takes the best value. Advisory, unvalidated.
 - **Shows ADP and the model-vs-market gap** (`adp`, `adp_gap`) next to the projection whenever an ADP file is ingested; a missing or
   unusable ADP file only leaves the columns out (the reason is in `board.attrs["adp_note"]`). The board includes the incoming rookie
   class once `python -m src.ingest.nba_incoming` has run.

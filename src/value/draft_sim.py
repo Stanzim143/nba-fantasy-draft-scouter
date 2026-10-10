@@ -173,6 +173,33 @@ def adp_sd(adp: np.ndarray, *, sd_min: float = SD_MIN, sd_frac: float = SD_FRAC,
 
 # --------------------------------------------------------------------------- simulation
 
+def simulate_order(market: np.ndarray, *, n_sims: int = DEFAULT_SIMS, seed: int = DEFAULT_SEED, sd_min: float = SD_MIN,
+                   sd_frac: float = SD_FRAC, sd_max: float = SD_MAX, df: float | None = None,
+                   skip: float = SKIP) -> np.ndarray:
+    """The simulated drafts themselves: ``order[s, r]`` is the index of the player taken ``r``-th (0-based)
+    in draw ``s``, shape ``(n_sims, len(market))``, int32. Shared by :func:`survival_probabilities` and the
+    take-now-or-wait panel (``src.value.pick_decision``, ADR 0044) so both read the same draws."""
+    market = np.asarray(market, float)
+    n = market.size
+    rng = np.random.default_rng(seed)
+    z = rng.standard_t(df, (n_sims, n)) if df else rng.standard_normal((n_sims, n))  # df: Student-t noise
+    scores = market[None, :] + adp_sd(market, sd_min=sd_min, sd_frac=sd_frac, sd_max=sd_max)[None, :] * z
+    if skip > 0:  # this league passes on him entirely in a share `skip` of drafts (injury news, points-league fit)
+        scores = scores + SKIP_OFFSET * (rng.random((n_sims, n)) < skip)
+    return scores.argsort(axis=1).astype(np.int32)
+
+
+def survival_from_order(order: np.ndarray, opponent_picks: Sequence[int]) -> np.ndarray:
+    """``P(player i survives k picks)`` per ``k`` from :func:`simulate_order`'s draws."""
+    n_sims, n = order.shape
+    ks = [int(k) for k in opponent_picks]
+    if n == 0:
+        return np.zeros((len(ks), 0))
+    pos = np.empty((n_sims, n), dtype=np.int32)  # pos[s, i] = how many players score below i in sim s
+    np.put_along_axis(pos, order, np.arange(n, dtype=np.int32)[None, :], axis=1)
+    return np.vstack([(pos >= k).mean(axis=0) for k in ks]) if ks else np.zeros((0, n))
+
+
 def survival_probabilities(market: np.ndarray, opponent_picks: Sequence[int], *, n_sims: int = DEFAULT_SIMS,
                            seed: int = DEFAULT_SEED, sd_min: float = SD_MIN, sd_frac: float = SD_FRAC,
                            sd_max: float = SD_MAX, df: float | None = None, skip: float = SKIP) -> np.ndarray:
@@ -181,18 +208,11 @@ def survival_probabilities(market: np.ndarray, opponent_picks: Sequence[int], *,
     Returns an array of shape ``(len(opponent_picks), len(market))``. The same simulated drafts serve
     every ``k``, so the probabilities are non-increasing in ``k`` by construction."""
     market = np.asarray(market, float)
-    n = market.size
-    ks = [int(k) for k in opponent_picks]
-    if n == 0:
-        return np.zeros((len(ks), 0))
-    rng = np.random.default_rng(seed)
-    z = rng.standard_t(df, (n_sims, n)) if df else rng.standard_normal((n_sims, n))  # df: Student-t noise
-    scores = market[None, :] + adp_sd(market, sd_min=sd_min, sd_frac=sd_frac, sd_max=sd_max)[None, :] * z
-    if skip > 0:  # this league passes on him entirely in a share `skip` of drafts (injury news, points-league fit)
-        scores = scores + SKIP_OFFSET * (rng.random((n_sims, n)) < skip)
-    pos = np.empty((n_sims, n), dtype=np.int32)  # pos[s, i] = how many players score below i in sim s
-    np.put_along_axis(pos, scores.argsort(axis=1), np.arange(n, dtype=np.int32)[None, :], axis=1)
-    return np.vstack([(pos >= k).mean(axis=0) for k in ks]) if ks else np.zeros((0, n))
+    if market.size == 0:
+        return np.zeros((len(list(opponent_picks)), 0))
+    order = simulate_order(market, n_sims=n_sims, seed=seed, sd_min=sd_min, sd_frac=sd_frac, sd_max=sd_max,
+                           df=df, skip=skip)
+    return survival_from_order(order, opponent_picks)
 
 
 @dataclass
@@ -204,6 +224,8 @@ class AvailabilityResult:
     opponent_picks: list[int]           # opponent picks before each target
     market_picks: list[int] = field(default_factory=list)  # picks simulated before each target (incl. the user's)
     notes: list[str] = field(default_factory=list)
+    order: np.ndarray | None = None     # the draws (simulate_order), columns = rows of ``table``; reused by ADR 0044
+    band_orders: list[np.ndarray] = field(default_factory=list)  # draws at each BAND_PARAMS setting, same seed
 
 
 def availability_table(board: pd.DataFrame, drafted_ids: Iterable[int], *, current_pick: int, slot: int,
@@ -225,9 +247,11 @@ def availability_table(board: pd.DataFrame, drafted_ids: Iterable[int], *, curre
         notes.append(f"the draft is over ({total} picks)")
     elif not targets:
         notes.append("you have no picks left after this one")
-    probs = survival_probabilities(market, ms, n_sims=n_sims, seed=seed)
-    band = [survival_probabilities(market, ms[:1], n_sims=n_sims, seed=seed, sd_min=a, sd_frac=b, sd_max=c, skip=d)
-            for a, b, c, d in BAND_PARAMS] if ms else []
+    order = simulate_order(market, n_sims=n_sims, seed=seed)
+    probs = survival_from_order(order, ms)
+    band_orders = [simulate_order(market, n_sims=n_sims, seed=seed, sd_min=a, sd_frac=b, sd_max=c, skip=d)
+                   for a, b, c, d in BAND_PARAMS] if ms else []
+    band = [survival_from_order(o, ms[:1]) for o in band_orders]
 
     table = pd.DataFrame({c: pool[c] if c in pool.columns else np.nan for c in ("player_id", "rank", "name", "position", "vorp", "adp")})
     table["market_adp"] = np.round(market, 1)
@@ -238,4 +262,4 @@ def availability_table(board: pd.DataFrame, drafted_ids: Iterable[int], *, curre
     vorp = pd.to_numeric(table["vorp"], errors="coerce").clip(lower=0)
     table["vorp_at_risk"] = (vorp * (1 - table["p_avail_next"])).round(1)
     return AvailabilityResult(table=table, current_pick=current_pick, on_the_clock=on_clock, targets=targets,
-                              opponent_picks=ks, market_picks=ms, notes=notes)
+                              opponent_picks=ks, market_picks=ms, notes=notes, order=order, band_orders=band_orders)

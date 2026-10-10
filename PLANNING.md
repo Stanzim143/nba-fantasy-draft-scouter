@@ -55,6 +55,9 @@ Built in parallel across five tracks (each in its own git worktree, integrated o
   per player, Monte Carlo of opponents drafting by ESPN ADP with noise; advisory, rank and VORP unchanged. The noise is fitted on
   the league's 2021-22 to 2024-25 drafts (modest gain, overconfident at the ends; a band is shown). Still open: refit with the
   2026-27 draft; the placeholder team's autodraft by ESPN default rank, traded picks and need-driven runs are not modelled.
+- **Take now or wait?** (ADR 0044), 2026-10-10: a two-pick lookahead panel on the Next pick tab (maximise value now + expected
+  best value at the next turn, on the simulator's draws), with a noise-band flip warning. Still open: unvalidated (no check that it
+  drafts better teams); horizon is two picks.
 - **External rankings comparison** (ADR 0028), 2026-09-28: manually-exported Yahoo and FantasyPros draft rankings, matched onto `player_id` (`src/ingest/yahoo_rankings.py`, `fantasypros_rankings.py`, `src/value/rankings_compare.py`) and shown against our own board rank on an app page (`src/app/pages/external_rankings.py`). Snapshot files live outside the repo under `NBA_DATA_DIR`; refreshed by hand whenever the user re-exports them, not a live feed.
 - **Trade analyzer confidence UI** (ADR 0027), 2026-09-27: the in-season app's Trade analyzer tab adds a five-way magnitude-bucketed confidence read (`clear win` to `clear loss`) on the existing `+-1.5%` tolerance band, per-player advisory caveats (ESPN injury status, return/load-management flags), and an optional partner-side score. A read on the existing statistic, not a new one; no projection change.
 - **"Best available by need"** (ADR 0026), 2026-09-27: a second, additive ranking (`need_score`/`need_adj_vorp`) that crosses the undrafted board against the user's own drafted roster's positional gaps from `config/league.yaml`. Documented, unvalidated heuristic; falls back to plain VORP order with an empty roster; no change to `vorp` itself.

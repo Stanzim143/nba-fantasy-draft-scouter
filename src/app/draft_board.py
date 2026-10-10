@@ -56,7 +56,7 @@ from src.contracts import raw_dir, season_start
 from src.ingest.espn_league import SOURCE as ESPN_SOURCE
 from src.ingest.espn_league import ESPNLeagueClient
 from src.models.registry import available_projectors
-from src.value import draft_sim
+from src.value import draft_sim, pick_decision
 from src.value.breakouts import SORT_OPTIONS, select_watchlist
 from src.value.league import load_league
 from src.value.positions import ESPN_POSITIONS
@@ -490,6 +490,37 @@ def _need_tab(board: pd.DataFrame) -> None:
                 use_container_width=True, hide_index=True)
 
 
+def _decision_panel(board: pd.DataFrame, res: draft_sim.AvailabilityResult) -> None:
+    """ADR 0044: take now or wait? A two-pick lookahead on the Next pick tab's own simulated drafts. Advisory."""
+    st.subheader("Take now or wait?")
+    use_need = st.checkbox("Value = need-adjusted VORP (ADR 0026)", value=False, key="pd_need")
+    values, value_col = None, "vorp"
+    if use_need and "player_id" in res.table.columns:
+        try:
+            view = need_board_view(board, st.session_state.draft_state, _cached_league_config())
+            need = view.table.set_index("player_id")["need_adj_vorp"]
+            values, value_col = res.table["player_id"].map(need).fillna(res.table["vorp"]), "need_adj_vorp"
+        except (FileNotFoundError, KeyError) as e:
+            st.caption(f"Need adjustment unavailable ({e}); using plain VORP.")
+    tiebreak = None
+    if pick_decision.TIEBREAK_COLUMN in board.columns and "player_id" in res.table.columns:
+        tiebreak = res.table["player_id"].map(board.set_index("player_id")[pick_decision.TIEBREAK_COLUMN])
+    dec = pick_decision.decide(res, values=values, value_col=value_col, tiebreak=tiebreak,
+                               alt_orders=pick_decision.band_orders(res))
+    if dec.status in ("not_on_clock", "empty"):
+        st.info(dec.message)
+        return
+    (st.warning if dec.band_flip else st.write)(dec.message)
+    shown = dec.table.drop(columns="player_id")
+    st.dataframe(shown, column_config=_column_config(shown.columns), use_container_width=True, hide_index=True)
+    st.caption(
+        f"value_now = {value_col}. Two picks only (this one and your next); later turns, opponents' roster needs and "
+        "your own need after this pick are not modelled. Built on the simulator's unvalidated noise: a rough guide, "
+        "not a validated recommendation. "
+        + ("playoff_fp breaks exact ties only. " if tiebreak is not None else "")
+        + "Rank and VORP are unchanged (ADR 0044).")
+
+
 def _next_pick_tab(board: pd.DataFrame) -> None:
     """ADR 0040: P(still available at my next turn) per player. Advisory: rank and VORP are untouched."""
     st.caption(
@@ -528,6 +559,7 @@ def _next_pick_tab(board: pd.DataFrame) -> None:
     st.write(f"Slot **{slot}** of {teams} ({source}), current pick **#{current}**: {when}your next turns {turns or 'none'}.")
     for note in res.notes:
         st.caption(note)
+    _decision_panel(board, res)
     if res.table.empty or not res.targets:
         return
     sort_by = st.radio("Sort by", ["rank", "vorp_at_risk", "p_avail_next"], horizontal=True, key="ns_sort")
