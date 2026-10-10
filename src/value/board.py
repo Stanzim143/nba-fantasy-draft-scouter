@@ -24,7 +24,8 @@ Columns of the board (sorted by ``rank``; complete: every projected player appea
 The CLI (real data only) then adds display-only overlays that never change a projection or a rank: the draft-day risk flags (ADR 0016),
 the advisory return flag ``return_flag`` / ``return_block_pct`` / ``return_tail`` / ``return_gp_upside_adv`` / ``return_fp_upside_adv``
 (ADR 0023), the advisory short-absence flag ``lm_flag`` / ``lm_iso_n`` / ``lm_rest_n`` / ``lm_gp_risk_adv`` / ``lm_fp_risk_adv`` (ADR 0024)
-and the unvalidated contract flags (ADR 0019).
+the unvalidated contract flags (ADR 0019)
+and the advisory fantasy-playoff value ``playoff_team`` / ``playoff_games`` / ``playoff_avail`` / ``playoff_fp`` (ADR 0039).
 
 The CLI's ``--adp`` accepts either shape: a plain ``player_id, adp`` CSV, or the raw ingested
 ADP table (``season, source, source_id, adp``, e.g. ``adp.parquet`` from
@@ -315,6 +316,15 @@ def main(argv: list[str] | None = None) -> int:
                 _safe_print(f"note: {n}")
         except (FileNotFoundError, KeyError, ValueError, OSError) as e:
             _safe_print(f"note: contract flags unavailable ({e})")
+        try:   # ADR 0039: advisory fantasy-playoff games and FP; never changes a projection or a rank
+            from src.value.playoff_value import attach_playoff_value, compute_playoff_value
+
+            pv, pv_notes = compute_playoff_value(board, history, args.season, args.data_dir, season_games=float(games))
+            board = attach_playoff_value(board, pv)
+            for n in pv_notes:
+                _safe_print(f"note: {n}")
+        except (FileNotFoundError, KeyError, ValueError, OSError) as e:
+            _safe_print(f"note: playoff value unavailable ({e})")
     args.out.parent.mkdir(parents=True, exist_ok=True)
     board.to_csv(args.out, index=False, encoding="utf-8")
 

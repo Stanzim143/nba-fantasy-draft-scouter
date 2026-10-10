@@ -406,6 +406,35 @@ _LOAD_MANAGEMENT_OVERLAY: dict[str, Entry] = {
     ),
 }
 
+_PLAYOFF_VALUE: dict[str, Entry] = {
+    "playoff_team": _e(
+        "NBA team whose schedule counts for playoff_games: the latest roster snapshot, else last season's team.",
+        "Resolved the same way as the draft-day risk overlay's team: today's roster snapshot for the season when one exists, "
+        "otherwise the team the player ended last season on. Blank when neither is known.",
+        "docs/adr/0039-playoff-value.md",
+    ),
+    "playoff_games": _e(
+        "His team's NBA games in the league's fantasy-playoff weeks (the last 3 matchup weeks). Advisory, not in the rank.",
+        "Counted from the stored ESPN pro schedule (schedule_games) over the league's matchup calendar "
+        "(src/inseason/weeks.py: ESPN's periods when published, else the documented derivation). Teams differ by a game or two.",
+        "docs/adr/0039-playoff-value.md",
+    ),
+    "playoff_avail": _e(
+        "Per-game availability used for playoff_fp: proj_gp / season games, in [0, 1].",
+        "The model's own expected share of team games played (it already includes P(appear) for veterans and rookies), "
+        "spread evenly over the season. ADR 0039 tested a late-season adjustment against it; see the ADR for the result.",
+        "docs/adr/0039-playoff-value.md",
+        formula="playoff_avail = clip(proj_gp / season_games, 0, 1)",
+    ),
+    "playoff_fp": _e(
+        "Expected fantasy points in the league's playoff weeks. Advisory and sortable; the rank, VORP and projections are unchanged.",
+        "A tie-breaker between players of similar value for a team expecting to make the playoffs: more team games in the "
+        "playoff weeks and a higher projection both raise it.",
+        "docs/adr/0039-playoff-value.md",
+        formula="playoff_fp = proj_fppg * playoff_games * playoff_avail",
+    ),
+}
+
 _CONTRACT_OVERLAY: dict[str, Entry] = {
     "contract_flag": _e(
         "contract year / new deal / extension / rookie final year (nominal) / rookie option year "
@@ -1065,6 +1094,7 @@ GROUPS: list[tuple[str, dict[str, Entry]]] = [
     ("Returned-healthy overlay (ADR 0023)", _RETURN_OVERLAY),
     ("Load-management overlay (ADR 0024)", _LOAD_MANAGEMENT_OVERLAY),
     ("Contract overlay (ADR 0019)", _CONTRACT_OVERLAY),
+    ("Fantasy-playoff value (ADR 0039)", _PLAYOFF_VALUE),
     ("Best available by need (ADR 0026)", _NEED_OVERLAY),
     ("Draft-state / UI", _DRAFT_STATE),
     ("Breakouts / watchlist (ADR 0012)", _BREAKOUTS),

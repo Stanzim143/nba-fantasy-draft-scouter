@@ -29,6 +29,7 @@ from src.value.contract_flags import VALIDATION_COLUMN as CONTRACT_VALIDATION_CO
 from src.value.load_flag import LM_COLUMNS
 from src.value.load_flag import VALIDATION_COLUMN as LM_VALIDATION_COLUMN
 from src.value.need import NEED_TABLE_COLUMNS, POSITION_NEED_COLUMNS
+from src.value.playoff_value import PLAYOFF_COLUMNS
 from src.value.return_flag import RETURN_COLUMNS
 from src.value.return_flag import VALIDATION_COLUMN as RETURN_VALIDATION_COLUMN
 from src.value.risk import RISK_COLUMNS
@@ -50,6 +51,7 @@ def _every_possible_board_column() -> set[str]:
     cols |= set(RETURN_COLUMNS) | {RETURN_VALIDATION_COLUMN}
     cols |= set(LM_COLUMNS) | {LM_VALIDATION_COLUMN}
     cols |= set(CONTRACT_COLUMNS) | {CONTRACT_VALIDATION_COLUMN}
+    cols |= set(PLAYOFF_COLUMNS)
     return cols
 
 
@@ -64,7 +66,7 @@ def test_glossary_has_no_orphan_entries_for_removed_board_columns():
     rename)."""
     board_only_groups = {"Identity and projection", "Value and VORP / ADP", "Risk overlay (ADR 0016)",
                          "Returned-healthy overlay (ADR 0023)", "Load-management overlay (ADR 0024)",
-                         "Contract overlay (ADR 0019)"}
+                         "Contract overlay (ADR 0019)", "Fantasy-playoff value (ADR 0039)"}
     known = _every_possible_board_column()
     for group_name, cols in G.GROUPS:
         if group_name not in board_only_groups:

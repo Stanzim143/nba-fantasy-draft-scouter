@@ -138,6 +138,21 @@ def _with_load_flag(board: pd.DataFrame, history: History, season_games: float) 
     return out
 
 
+def _with_playoff_value(board: pd.DataFrame, history: History, season: str, data_dir: Path | None,
+                        season_games: float) -> pd.DataFrame:
+    """Attach the advisory fantasy-playoff value (ADR 0039); extra, never fatal, never changes a projection or a rank."""
+    from src.value.playoff_value import attach_playoff_value, compute_playoff_value
+
+    try:
+        overlay, notes = compute_playoff_value(board, history, season, data_dir, season_games=season_games)
+    except (FileNotFoundError, KeyError, ValueError, OSError) as exc:
+        board.attrs["risk_notes"] = [*board.attrs.get("risk_notes", []), f"playoff value unavailable ({exc})"]
+        return board
+    out = attach_playoff_value(board, overlay)
+    out.attrs["risk_notes"] = [*board.attrs.get("risk_notes", []), *notes]
+    return out
+
+
 def load_board(season: str, model: str = "baseline", *, teams: int | None = None,
                synthetic: bool = False, data_dir: Path | None = None,
                positional: str = "auto") -> pd.DataFrame:
@@ -197,6 +212,7 @@ def load_board(season: str, model: str = "baseline", *, teams: int | None = None
         board = _with_return_flag(board, history, float(games))
         board = _with_load_flag(board, history, float(games))
         board = _with_contract_flags(board, history, season, data_dir)
+        board = _with_playoff_value(board, history, season, data_dir, float(games))
 
     if board.empty:
         raise BoardUnavailable(f"the board for {season} came back empty.")
