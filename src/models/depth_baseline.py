@@ -44,3 +44,9 @@ class AdpDepthDebutantProjector(DepthHooks, AdpHooks, DebutantBaselineProjector)
     """The board stack's base (``AdpDebutantProjector``) plus the depth minutes layer."""
 
     name = "baseline_adp_depth_debut"
+
+
+class DepthDebutantProjector(DepthHooks, DebutantBaselineProjector):
+    """The board stack's base without ADP-as-input: debutants plus the depth minutes layer (ADR 0043 drop-one variant)."""
+
+    name = "baseline_depth_debut"

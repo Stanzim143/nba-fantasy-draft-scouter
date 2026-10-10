@@ -11,7 +11,8 @@ Built-ins: ``"naive_last_season"``, ``"baseline"``, ``"baseline_hurdle"`` (ADR 0
 (ADR 0012): ``"baseline_offseason"`` (Summer League + preseason), ``"baseline_summer_league"`` and
 ``"baseline_preseason"`` (one context each, for the ablation), and the debutant family (ADR 0016):
 ``"baseline_debut"`` (baseline plus stash and undrafted debutants) and ``"baseline_offseason_debut"``; and the board stack plus
-the rookie appearance stage (ADR 0038), ``"baseline_hurdle_adp_depth_rookie_offseason_debut"``. Every
+the rookie appearance stage (ADR 0038), ``"baseline_hurdle_adp_depth_rookie_offseason_debut"``, and that stack's drop-one
+variants (ADR 0043). Every
 projector returned satisfies the ``Projector`` protocol from ``src.contracts`` and its ``.name``
 equals the registry name, so the ``model`` column of its projections identifies it.
 """
@@ -27,7 +28,7 @@ from src.models.config import BaselineConfig
 from src.models.coach_baseline import BaselineCoachProjector
 from src.models.contract_baseline import BaselineContractProjector
 from src.models.contract_terms_baseline import BaselineContractTermsProjector
-from src.models.depth_baseline import AdpDepthDebutantProjector, BaselineDepthProjector
+from src.models.depth_baseline import AdpDepthDebutantProjector, BaselineDepthProjector, DepthDebutantProjector
 from src.models.debutants import DebutantBaselineProjector
 from src.models.injury_baseline import BaselineInjuryProjector
 from src.models.naive import NaiveLastSeason
@@ -83,6 +84,22 @@ _REGISTRY: dict[str, Callable[..., Projector]] = {
     "baseline_hurdle_adp_depth_rookie_offseason_debut": lambda **kw: BaselineOffseasonProjector(
         **{"base": AdpDepthDebutantProjector(config=_HURDLE, rookie_appearance=True),
            "name": "baseline_hurdle_adp_depth_rookie_offseason_debut", **kw}),
+    # ADR 0043 drop-one audit of the board stack: each is the board default minus one layer (minus rookie is
+    # "baseline_hurdle_adp_depth_offseason_debut" above).
+    "baseline_adp_depth_rookie_offseason_debut": lambda **kw: BaselineOffseasonProjector(       # minus hurdle
+        **{"base": AdpDepthDebutantProjector(rookie_appearance=True),
+           "name": "baseline_adp_depth_rookie_offseason_debut", **kw}),
+    "baseline_hurdle_depth_rookie_offseason_debut": lambda **kw: BaselineOffseasonProjector(    # minus ADP
+        **{"base": DepthDebutantProjector(config=_HURDLE, rookie_appearance=True),
+           "name": "baseline_hurdle_depth_rookie_offseason_debut", **kw}),
+    "baseline_hurdle_adp_rookie_offseason_debut": lambda **kw: BaselineOffseasonProjector(      # minus depth
+        **{"base": AdpDebutantProjector(config=_HURDLE, rookie_appearance=True),
+           "name": "baseline_hurdle_adp_rookie_offseason_debut", **kw}),
+    "baseline_hurdle_adp_depth_rookie_debut": lambda **kw: AdpDepthDebutantProjector(           # minus offseason
+        **{"config": _HURDLE, "rookie_appearance": True, "name": "baseline_hurdle_adp_depth_rookie_debut", **kw}),
+    "baseline_hurdle_adp_depth_rookie_offseason": lambda **kw: BaselineOffseasonProjector(      # minus debutants
+        **{"base": AdpDepthDebutantProjector(config=_HURDLE, rookie_appearance=True, add_debutants=False),
+           "name": "baseline_hurdle_adp_depth_rookie_offseason", **kw}),
     "baseline_offseason_rich": lambda **kw: BaselineOffseasonProjector(
         **{"components": True, "name": "baseline_offseason_rich", **kw}),
     "baseline_summer_league_rich": lambda **kw: BaselineOffseasonProjector(
