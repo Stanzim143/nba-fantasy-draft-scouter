@@ -10,7 +10,7 @@ lowest-scoring players in order. A player survives to a target pick when fewer t
 score below him, where ``k`` is the number of *opponent* picks between now and that target. The
 user's own intervening picks are not modelled as taking anyone (the question is "if I pass on him").
 ``sd`` grows with ADP (``SD_MIN + SD_FRAC * adp``, capped at ``SD_MAX``), and in a share ``SKIP`` of drafts
-this league passes on a player entirely. Those values are fitted on this league's five earlier drafts
+this league passes on a player entirely. Those values are fitted on four of this league's earlier drafts
 (``src.value.draft_sim_calibrate``, ADR 0040); the fit helps only modestly and stays overconfident at the
 extremes, so the table also shows the range across plausible noise settings (``BAND_PARAMS``).
 
@@ -27,8 +27,8 @@ from typing import Iterable, Sequence
 import numpy as np
 import pandas as pd
 
-#: Heuristic draft-position noise: sd = min(SD_MAX, SD_MIN + SD_FRAC * adp), in picks. Unvalidated
-#: (ADR 0040): about 1.6 picks at ADP 3, 7 at ADP 30, 21 at ADP 100.
+#: Draft-position noise: sd = min(SD_MAX, SD_MIN + SD_FRAC * adp), in picks, fitted on the league's past drafts
+#: (ADR 0040): about 3.5 picks at ADP 3, 17 at ADP 30, 25 (the cap) from ADP 46.
 SD_MIN = 2.0        # fitted on the league's 2021-22 to 2024-25 drafts (ADR 0040)
 SD_FRAC = 0.5
 SD_MAX = 25.0
