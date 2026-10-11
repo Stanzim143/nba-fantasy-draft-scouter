@@ -88,6 +88,9 @@ and console/server logs were clean throughout — see `PLANNING.md` section 1a. 
   flagged players on the **Debutants & risk** tab with block %, games since, and the advisory games and total FP. Advisory judgement, not a projection: nothing about a projection or a rank changes.
 - **Short-absence flag** (ADR 0024): an `lm_flag` column, a **Many short absences only** checkbox on the Best available and Full board tabs, and a table on the **Debutants & risk** tab (`lm_iso_n`, `lm_rest_n`,
   advisory -2 GP and total FP). It marks 6+ games missed in 1-2 game absences last season; the data cannot say whether that was rest or a minor injury. Advisory, not a projection: nothing about a projection or a rank changes.
+- **Fantasy-playoff value** (ADR 0039): `playoff_games` (the player's team's NBA games in the league's 3 playoff weeks) and `playoff_fp`
+  (`proj_fppg x playoff_games x proj_gp / season games`) at the end of the board tables; click a header to sort. Also in the `daily_refresh`
+  board CSVs with `playoff_team` and `playoff_avail`. Advisory tie-breaker: nothing about a projection, VORP or rank changes.
 - **External rankings disagreement flag** (ADR 0029, `docs/categories.md` section 24): once a comparison has been loaded on the separate
   **External rankings** page (Yahoo/FantasyPros vs. our board, ADR 0028), the **Debutants & risk** tab shows an "External rankings
   disagreement" table for undrafted players where our board and the wider consensus disagree by 50+ rank spots (either direction) — a fixed,
