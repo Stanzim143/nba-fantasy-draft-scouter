@@ -181,3 +181,19 @@ def test_fast_enough_for_a_streamlit_rerun():
 def test_glossary_covers_the_panel_columns():
     for c in PD.DECISION_COLUMNS:
         assert G.tooltip(c), c
+
+
+@pytest.mark.parametrize("seed", range(6))
+def test_pruned_two_pick_keeps_the_exact_top_candidates(seed):
+    # The pruning in two_pick_values must never drop a player whose two-pick total belongs in the top `keep`.
+    rng = np.random.default_rng(seed)
+    n = int(rng.integers(8, 30))
+    values = rng.normal(20, 25, n)
+    order = np.vstack([rng.permutation(n) for _ in range(25)])
+    k = int(rng.integers(0, n))
+    keep = 3
+    nb = PD.two_pick_values(order, values, k, keep=keep, first=2)
+    brute = np.array([values[c] + _brute_next_best(order, values, k, c) for c in range(n)])
+    top = np.argsort(-brute, kind="stable")[:keep]
+    assert np.all(np.isfinite(nb[top]))
+    np.testing.assert_allclose(values[top] + nb[top], brute[top])
