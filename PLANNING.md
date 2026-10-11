@@ -261,5 +261,9 @@ Start with simple, explainable models (regularized regression, gradient boosting
 
 - [x] Methodology follow-ups (ADR 0030, docs/limitations.md): zero-game seasons modelled (hurdle, ADR 0031), calibrated season-total interval (ADR 0033); a dated position source is not needed (ADR 0033, closed by evidence).
 - [x] Rookies' chance of not appearing in their first season (ADR 0038). Still open: drafted rookies who never play any NBA game (the `players` table does not hold them).
+- [x] Fantasy-playoff value on the board (ADR 0039): advisory `playoff_games` / `playoff_fp`, rank unchanged. The late-season availability study
+  was rejected under its pre-registered rule: rotation veterans play about 7% fewer playoff-week games than the model rate (stable, 6 of 7
+  seasons), but pre-season features do not predict who, and the shift worsens MAE. Open: re-check once ESPN publishes the real
+  matchup periods (the playoff dates are derived until then).
 - [ ] The wiki ingesters (`wiki_transactions`, `wiki_contracts`, `wiki_coaches`) still keep their raw cache under `default_cache_dir`, ignoring `--data-dir` (ESPN, FantasyPros and NBA clients honor it).
 - [ ] `constraints.txt` pins are bumped by hand: Dependabot most likely does not track a constraints file. Revisit if a pin falls behind.

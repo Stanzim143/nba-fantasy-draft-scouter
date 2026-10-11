@@ -331,9 +331,18 @@ def board_projections(tables: Mapping[str, pd.DataFrame], seasons: list[str], ca
     from src.backtest.harness import walk_forward
     from src.backtest.runner import resolve_projector
 
-    res = walk_forward(tables, resolve_projector(BOARD_MODEL), seasons, cache_dir=cache_dir)
+    # The board model has no ``fingerprint``, so the harness cache cannot be used; ``cache_dir`` keeps this run's projections in one
+    # file instead (delete it after any model change).
+    path = Path(cache_dir) / f"{BOARD_MODEL}__{seasons[0]}_{seasons[-1]}.parquet" if cache_dir else None
+    if path is not None and path.exists():
+        return pd.read_parquet(path)
+    res = walk_forward(tables, resolve_projector(BOARD_MODEL), seasons)
     p = res.players
-    return p.loc[p["projected"], ["season", "player_id", "proj_gp", "proj_fppg"]].reset_index(drop=True)
+    out = p.loc[p["projected"], ["season", "player_id", "proj_gp", "proj_fppg"]].reset_index(drop=True)
+    if path is not None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        out.to_parquet(path, index=False)
+    return out
 
 
 def main(argv=None) -> int:

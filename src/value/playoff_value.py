@@ -16,8 +16,8 @@ Columns added by :func:`attach_playoff_value` (NaN where the team or the schedul
 ``playoff_games``   that team's games in the league's playoff weeks
 ``playoff_avail``   per-game availability: ``proj_gp / season_games``, clipped to [0, 1]. This is the model's own expected share of
                     team games played (it already carries the hurdle model's P(appear) and, for rookies, ADR 0038's), spread
-                    evenly over the season; no extra haircut. ADR 0039's late-season study tests whether the playoff weeks
-                    deserve a different rate.
+                    evenly over the season; no extra haircut. ADR 0039's late-season study rejected a late-season
+                    adjustment (a uniform ~7% shortfall, not predictable from pre-season features, that worsens MAE).
 ``playoff_fp``      ``proj_fppg * playoff_games * playoff_avail``: expected fantasy points in the playoff weeks
 
 The board's ``proj_fppg``, ``proj_gp`` and ``season_games`` are read, never written; ``proj_total_fp``, ``vorp``, ``rank`` and ``tier``

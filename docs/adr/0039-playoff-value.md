@@ -56,10 +56,30 @@ any result was computed.**
   neither passes, Part A keeps the plain model availability. Secondary (reported, not decisive): MAE and MSE of playoff-week fantasy
   points (`proj_fppg x E` against the realised FP in those weeks).
 
-**D3. Result.** Pending (filled in by the run below).
+**D3. Result, 2026-10-12: rejected; Part A keeps the plain model availability.** Real walk-forward run, 2,220 universe player-seasons
+2016-17 to 2025-26. 2019-20 (4.7 mean team games in the derived playoff weeks) and 2020-21 (7.8) were not scored, as the rule expected. 2016-17
+has no earlier training rows. That leaves 7 scored seasons and 1,565 player-seasons. Lift is the baseline's error minus the candidate's (positive = better):
+
+| candidate | metric | lift | 95% CI | seasons won |
+|---|---|---:|---|---:|
+| (1) mean gap | games MSE | +0.359 | [+0.194, +0.535] | 6/7 |
+| (1) mean gap | games MAE | -0.097 | [-0.118, -0.075] | 0/7 |
+| (2) OLS | games MSE | +0.313 | [+0.105, +0.539] | 5/7 |
+| (2) OLS | games MAE | -0.117 | [-0.143, -0.090] | 0/7 |
+| (2) over (1) | games MSE | -0.046 | [-0.150, +0.066] | 3/7 |
+
+Both candidates pass (a) and (b) but fail (c): MAE gets significantly worse in every season, so the rule rejects both. The
+descriptive finding is real and stable: rotation veterans played 7.14 playoff-week games against the baseline's 7.71 (residual -0.58,
+negative in 6 of 7 seasons; mean share gap -0.060). It is a near-uniform shift, not something the pre-season features
+predict: the OLS adds nothing over the intercept, and every standardised coefficient is at most 0.015 in absolute value against an intercept of -0.056. The
+expected playoff-week value is therefore about 7% optimistic on average, but subtracting that shift makes the typical player's
+error larger (most players play all their team's games), so the shift is not applied. Reproduce:
+`python -m src.backtest.playoff_availability --cache-dir <dir> --out <dir>` (about one board-model walk-forward of memory, so
+run it under the compute lock).
 
 ## Consequences
 
 - Part A is a tie-breaker for a team expecting to make the playoffs, not a re-ranking; the main rank is unchanged by construction.
+- Read `playoff_fp` as relative between players. As an absolute level it runs about 7% high (D3).
 - The playoff-week dates rest on the derived calendar until ESPN publishes real periods; `daily_refresh` rebuilds the board CSVs, so a
   published calendar is picked up automatically.

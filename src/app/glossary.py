@@ -422,7 +422,7 @@ _PLAYOFF_VALUE: dict[str, Entry] = {
     "playoff_avail": _e(
         "Per-game availability used for playoff_fp: proj_gp / season games, in [0, 1].",
         "The model's own expected share of team games played (it already includes P(appear) for veterans and rookies), "
-        "spread evenly over the season. ADR 0039 tested a late-season adjustment against it; see the ADR for the result.",
+        "spread evenly over the season. ADR 0039 tested a late-season adjustment and rejected it (rotation veterans average about 7% fewer playoff-week games, uniformly, so treat playoff_fp as relative).",
         "docs/adr/0039-playoff-value.md",
         formula="playoff_avail = clip(proj_gp / season_games, 0, 1)",
     ),
