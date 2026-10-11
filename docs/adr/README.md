@@ -48,7 +48,7 @@ Status as of 2026-09-29.
 | [0036](0036-live-injury-news.md) | Live ESPN injury-news feed (`injury_news`), advisory board flags only | Accepted |
 | [0037](0037-offcourt-flags-and-notes.md) | Off-court flags (injury-report reasons, ESPN news keywords) and a hand-written player notes file, advisory only | Accepted |
 | [0038](0038-rookie-appearance.md) | Rookie appearance stage: P(a drafted rookie plays at all) from pick and preseason/Summer League participation; board default updated | Accepted |
-| [0040](0040-draft-availability.md) | Draft-availability simulator: P(a player is still there at my next pick), advisory, unvalidated noise | Accepted |
+| [0040](0040-draft-availability.md) | Draft-availability simulator: P(a player is still there at my next pick), advisory, noise fitted on the league's past drafts | Accepted |
 
 ## Writing a new ADR
 

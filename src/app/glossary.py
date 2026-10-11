@@ -1018,12 +1018,24 @@ _DRAFT_AVAILABILITY: dict[str, Entry] = {
         "docs/adr/0040-draft-availability.md",
     ),
     "p_avail_next": _e(
-        "Chance he is still on the board at your next turn if you pass on him now (simulated, unvalidated noise).",
-        "Share of simulated drafts in which the opponents picking before your next turn leave him. Opponents take the "
-        "lowest market_adp + noise, with noise sd = 1 + 0.2 x ADP picks (capped at 25), a heuristic never fitted to "
-        "real drafts. Your own picks in between are assumed not to take him. Advisory: rank and VORP are unchanged.",
+        "Chance he is still on the board at your next turn if you pass on him now (simulated; rough, see p_next_lo/hi).",
+        "Share of simulated drafts in which the picks before your next turn leave him. Each pick takes the lowest "
+        "market_adp + noise (sd = 2 + 0.5 x ADP picks, capped at 25), and in 20% of drafts the league passes on a "
+        "player entirely; both fitted on this league's 2021-22 to 2024-25 drafts. Your own picks in between take "
+        "someone else, not him. Overconfident near 0 and 1. Advisory: rank and VORP are unchanged.",
         "docs/adr/0040-draft-availability.md",
         formula="share of sims where fewer than k players score below him; score = market_adp + sd * N(0,1)",
+    ),
+    "p_next_lo": _e(
+        "Lowest p_avail_next across plausible noise settings (the old 1 + 0.2 x ADP guess and two other near-best fits).",
+        "With p_next_hi, a band showing how much the number depends on the noise model, which the four past drafts "
+        "pin down only loosely. A wide band means: do not lean on the point value.",
+        "docs/adr/0040-draft-availability.md",
+    ),
+    "p_next_hi": _e(
+        "Highest p_avail_next across plausible noise settings (see p_next_lo).",
+        "Upper end of the same band as p_next_lo.",
+        "docs/adr/0040-draft-availability.md",
     ),
     "p_avail_after": _e(
         "Chance he is still on the board at your turn after next (same simulated drafts as p_avail_next).",

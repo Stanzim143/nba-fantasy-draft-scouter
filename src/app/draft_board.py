@@ -493,10 +493,11 @@ def _need_tab(board: pd.DataFrame) -> None:
 def _next_pick_tab(board: pd.DataFrame) -> None:
     """ADR 0040: P(still available at my next turn) per player. Advisory: rank and VORP are untouched."""
     st.caption(
-        "Will he still be there at your next pick? Simulated opponents draft by ESPN ADP with noise. **The noise is an "
-        "unvalidated heuristic** (sd = 1 + 0.2 x ADP picks): ESPN publishes no spread and we have no record of real "
-        "draft positions. `vorp_at_risk` = VORP x (1 - p_avail_next): the high ones are the players to take now. "
-        "Rank and VORP are unchanged (ADR 0040).")
+        "Will he still be there at your next pick? Simulated opponents draft by ESPN ADP with noise fitted on this "
+        "league's four earlier drafts. **Treat the numbers as rough**: the fit beat the old guess only modestly and is "
+        "overconfident near 0 and 1, so `p_next_lo`-`p_next_hi` shows the range across plausible noise settings. "
+        "`vorp_at_risk` = VORP x (1 - p_avail_next): the high ones are the players to take now. The placeholder team's "
+        "autodraft (ESPN default rank) is not modelled. Rank and VORP are unchanged (ADR 0040).")
     try:
         cfg = _cached_league_config()["league"]
     except (FileNotFoundError, KeyError) as e:

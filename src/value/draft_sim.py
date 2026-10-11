@@ -9,9 +9,10 @@ Model, in one paragraph: each simulated draft gives every available player a sco
 lowest-scoring players in order. A player survives to a target pick when fewer than ``k`` players
 score below him, where ``k`` is the number of *opponent* picks between now and that target. The
 user's own intervening picks are not modelled as taking anyone (the question is "if I pass on him").
-``sd`` grows with ADP (``SD_MIN + SD_FRAC * adp``, capped at ``SD_MAX``). **That noise is an
-unvalidated heuristic**: the ADP table carries only ESPN's mean draft position (no spread), and the
-repo has no record of actual draft positions to fit it against.
+``sd`` grows with ADP (``SD_MIN + SD_FRAC * adp``, capped at ``SD_MAX``), and in a share ``SKIP`` of drafts
+this league passes on a player entirely. Those values are fitted on this league's five earlier drafts
+(``src.value.draft_sim_calibrate``, ADR 0040); the fit helps only modestly and stays overconfident at the
+extremes, so the table also shows the range across plausible noise settings (``BAND_PARAMS``).
 
 Advisory only: nothing here changes a projection, VORP or the board rank. Plain functions, no
 Streamlit (``tests/value/test_draft_sim.py``).
@@ -28,14 +29,18 @@ import pandas as pd
 
 #: Heuristic draft-position noise: sd = min(SD_MAX, SD_MIN + SD_FRAC * adp), in picks. Unvalidated
 #: (ADR 0040): about 1.6 picks at ADP 3, 7 at ADP 30, 21 at ADP 100.
-SD_MIN = 1.0
-SD_FRAC = 0.2
+SD_MIN = 2.0        # fitted on the league's 2021-22 to 2024-25 drafts (ADR 0040)
+SD_FRAC = 0.5
 SD_MAX = 25.0
+SKIP = 0.2          # share of drafts in which this league passes on a player entirely (fitted, at the grid edge)
+#: (sd_min, sd_frac, sd_max, skip) settings spanning the plausible range; p_next_lo / p_next_hi are the min / max.
+BAND_PARAMS = ((1.0, 0.2, 25.0, 0.0), (2.0, 0.3, 15.0, 0.2), (6.0, 0.5, 40.0, 0.2))
+SKIP_OFFSET = 1e4   # a skipped player's score is pushed past every real pick
 DEFAULT_SIMS = 2000
 DEFAULT_SEED = 0
 
 #: Columns the availability table adds next to the board's own identity/value columns.
-AVAIL_COLUMNS = ["market_adp", "p_avail_next", "p_avail_after", "vorp_at_risk"]
+AVAIL_COLUMNS = ["market_adp", "p_avail_next", "p_next_lo", "p_next_hi", "p_avail_after", "vorp_at_risk"]
 TABLE_COLUMNS = ["rank", "name", "position", "vorp", "adp", *AVAIL_COLUMNS]
 
 
@@ -113,6 +118,17 @@ def upcoming_turns(current_pick: int, my_picks: Sequence[int]) -> tuple[bool, li
     return on_clock, (later[1:3] if on_clock else later[:2])
 
 
+def market_picks_before(target: int, current_pick: int, my_picks: Iterable[int]) -> int:
+    """How many picks in ``[current_pick, target)`` can take a player the user is passing on.
+
+    The user's own picks take someone else (the best remaining by market order), so a pick of his still
+    removes a player ahead of the target unless every pick after it is also his: the target survives iff
+    fewer players score below him than the picks up to and including the last opponent pick."""
+    mine = set(my_picks)
+    opp = [p for p in range(current_pick, target) if p not in mine]
+    return (opp[-1] - current_pick + 1) if opp else 0
+
+
 def opponent_picks_before(target: int, current_pick: int, my_picks: Iterable[int]) -> int:
     """Number of opponent picks in ``[current_pick, target)``; the user's own picks are excluded."""
     mine = set(my_picks)
@@ -159,7 +175,7 @@ def adp_sd(adp: np.ndarray, *, sd_min: float = SD_MIN, sd_frac: float = SD_FRAC,
 
 def survival_probabilities(market: np.ndarray, opponent_picks: Sequence[int], *, n_sims: int = DEFAULT_SIMS,
                            seed: int = DEFAULT_SEED, sd_min: float = SD_MIN, sd_frac: float = SD_FRAC,
-                           sd_max: float = SD_MAX) -> np.ndarray:
+                           sd_max: float = SD_MAX, df: float | None = None, skip: float = SKIP) -> np.ndarray:
     """``P(player i is still available after k opponent picks)`` for each ``k`` in ``opponent_picks``.
 
     Returns an array of shape ``(len(opponent_picks), len(market))``. The same simulated drafts serve
@@ -170,8 +186,10 @@ def survival_probabilities(market: np.ndarray, opponent_picks: Sequence[int], *,
     if n == 0:
         return np.zeros((len(ks), 0))
     rng = np.random.default_rng(seed)
-    scores = market[None, :] + adp_sd(market, sd_min=sd_min, sd_frac=sd_frac, sd_max=sd_max)[None, :] \
-        * rng.standard_normal((n_sims, n))
+    z = rng.standard_t(df, (n_sims, n)) if df else rng.standard_normal((n_sims, n))  # df: Student-t noise
+    scores = market[None, :] + adp_sd(market, sd_min=sd_min, sd_frac=sd_frac, sd_max=sd_max)[None, :] * z
+    if skip > 0:  # this league passes on him entirely in a share `skip` of drafts (injury news, points-league fit)
+        scores = scores + SKIP_OFFSET * (rng.random((n_sims, n)) < skip)
     pos = np.empty((n_sims, n), dtype=np.int32)  # pos[s, i] = how many players score below i in sim s
     np.put_along_axis(pos, scores.argsort(axis=1), np.arange(n, dtype=np.int32)[None, :], axis=1)
     return np.vstack([(pos >= k).mean(axis=0) for k in ks]) if ks else np.zeros((0, n))
@@ -184,6 +202,7 @@ class AvailabilityResult:
     on_the_clock: bool
     targets: list[int]                  # overall pick numbers of the next turn and the one after
     opponent_picks: list[int]           # opponent picks before each target
+    market_picks: list[int] = field(default_factory=list)  # picks simulated before each target (incl. the user's)
     notes: list[str] = field(default_factory=list)
 
 
@@ -199,19 +218,24 @@ def availability_table(board: pd.DataFrame, drafted_ids: Iterable[int], *, curre
     mine = my_pick_numbers(slot, teams, rounds)
     on_clock, targets = upcoming_turns(current_pick, mine)
     ks = [opponent_picks_before(t, current_pick, mine) for t in targets]
+    ms = [market_picks_before(t, current_pick, mine) for t in targets]
     market, note = market_adp(pool, current_pick=current_pick)
     notes = [note]
     if current_pick > total:
         notes.append(f"the draft is over ({total} picks)")
     elif not targets:
         notes.append("you have no picks left after this one")
-    probs = survival_probabilities(market, ks, n_sims=n_sims, seed=seed)
+    probs = survival_probabilities(market, ms, n_sims=n_sims, seed=seed)
+    band = [survival_probabilities(market, ms[:1], n_sims=n_sims, seed=seed, sd_min=a, sd_frac=b, sd_max=c, skip=d)
+            for a, b, c, d in BAND_PARAMS] if ms else []
 
     table = pd.DataFrame({c: pool[c] if c in pool.columns else np.nan for c in ("player_id", "rank", "name", "position", "vorp", "adp")})
     table["market_adp"] = np.round(market, 1)
     table["p_avail_next"] = probs[0] if len(ks) > 0 else np.nan
+    table["p_next_lo"] = np.min([probs[:1], *band], axis=0)[0] if band else np.nan
+    table["p_next_hi"] = np.max([probs[:1], *band], axis=0)[0] if band else np.nan
     table["p_avail_after"] = probs[1] if len(ks) > 1 else np.nan
     vorp = pd.to_numeric(table["vorp"], errors="coerce").clip(lower=0)
     table["vorp_at_risk"] = (vorp * (1 - table["p_avail_next"])).round(1)
     return AvailabilityResult(table=table, current_pick=current_pick, on_the_clock=on_clock, targets=targets,
-                              opponent_picks=ks, notes=notes)
+                              opponent_picks=ks, market_picks=ms, notes=notes)

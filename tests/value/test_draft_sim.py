@@ -88,12 +88,12 @@ def test_upcoming_turns_and_opponent_pick_counts_at_the_turn():
 
 def test_probabilities_are_monotone_in_adp_and_in_the_number_of_picks():
     m = np.arange(1, 81, dtype=float)
-    p = DS.survival_probabilities(m, [10, 25], n_sims=4000, seed=1)
+    p = DS.survival_probabilities(m, [10, 25], n_sims=4000, seed=1, skip=0.0)
     assert p.shape == (2, 80)
     assert (p[1] <= p[0] + 1e-12).all(), "a later turn can never be more likely than an earlier one"
     for row in p:
         assert (np.diff(row) >= -0.03).all(), "survival should rise with ADP up to Monte Carlo noise"
-        assert row[0] < 0.01 and row[-1] > 0.99
+        assert row[0] < 0.1 and row[-1] > 0.95
     smooth = np.convolve(p[0], np.ones(5) / 5, mode="valid")
     assert (np.diff(smooth) >= -0.005).all()
 
@@ -144,18 +144,20 @@ def test_adp_ties_are_broken_by_board_rank():
 def test_table_mid_draft_and_vorp_at_risk():
     b = _board(60)
     r = DS.availability_table(b, drafted_ids=[100, 101, 102], current_pick=4, slot=13, teams=13, rounds=13)
-    assert not r.on_the_clock and r.targets == [13, 14] and r.opponent_picks == [9, 9]
+    assert not r.on_the_clock and r.targets == [13, 14] and r.opponent_picks == [9, 9] and r.market_picks == [9, 9]
+    assert (r.table["p_next_lo"] <= r.table["p_avail_next"] + 1e-12).all()
+    assert (r.table["p_avail_next"] <= r.table["p_next_hi"] + 1e-12).all()
     t = r.table
     assert len(t) == 57 and list(t.columns) == ["player_id", *DS.TABLE_COLUMNS]
     assert t["rank"].tolist() == sorted(t["rank"].tolist())
-    assert t.iloc[0]["p_avail_next"] < 0.05 and t.iloc[-1]["p_avail_next"] > 0.95
+    assert t.iloc[0]["p_avail_next"] < 0.3 and t.iloc[-1]["p_avail_next"] > 0.95
     exp = (t["vorp"].clip(lower=0) * (1 - t["p_avail_next"])).round(1)
     assert np.allclose(t["vorp_at_risk"], exp)
 
 
 def test_table_on_the_clock_waits_for_the_following_turn():
     r = DS.availability_table(_board(60), [], current_pick=13, slot=13, teams=13, rounds=13)
-    assert r.on_the_clock and r.targets == [14, 39] and r.opponent_picks == [0, 24]
+    assert r.on_the_clock and r.targets == [14, 39] and r.opponent_picks == [0, 24] and r.market_picks == [0, 26]
     assert (r.table["p_avail_next"] == 1).all() and (r.table["vorp_at_risk"] == 0).all()
 
 
@@ -190,3 +192,22 @@ def test_advisory_only_board_is_not_changed():
 def test_every_shown_column_has_a_glossary_entry():
     missing = [c for c in DS.TABLE_COLUMNS if c not in G.COLUMN_GLOSSARY]
     assert not missing, missing
+
+
+def test_own_picks_count_as_market_picks_that_skip_the_target():
+    mine = DS.my_pick_numbers(13, 13, 13)                  # 13, 14, 39, ...
+    assert DS.market_picks_before(39, 13, mine) == 26      # my 13 and 14 take two others before the 24 opponents
+    assert DS.market_picks_before(14, 5, mine) == 8        # my pick 13 comes after the last opponent: no effect
+    assert DS.market_picks_before(14, 13, mine) == 0
+    mid = DS.my_pick_numbers(5, 10, 3)                     # 5, 16, 25
+    assert DS.market_picks_before(16, 5, mid) == 11 and DS.opponent_picks_before(16, 5, mid) == 10
+    # the bias the fix removes: counting my pick lowers survival near the boundary
+    m = np.arange(1, 40, dtype=float)
+    with_mine, opp_only = DS.survival_probabilities(m, [11, 10], skip=0.0)
+    assert with_mine[10] < opp_only[10]
+
+
+def test_skip_keeps_a_floor_under_survival():
+    m = np.arange(1, 60, dtype=float)
+    p = DS.survival_probabilities(m, [20], n_sims=4000, skip=0.2)[0]
+    assert 0.12 < p[0] < 0.28

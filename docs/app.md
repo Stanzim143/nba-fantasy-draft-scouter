@@ -68,7 +68,8 @@ and console/server logs were clean throughout — see `PLANNING.md` section 1a. 
   (1 - p_avail_next)) to spot who to take now. Your slot comes from the ESPN league's draft order and your team id
   (`ESPN_LEAGUE_ID` / `ESPN_TEAM_ID`, after `python -m src.ingest.espn_league`), else your first recorded pick; on draft day,
   type it in if the tab says it is unknown. The current pick is picks marked so far + 1 (override on the tab). The noise is
-  an unvalidated heuristic; traded picks are not modelled. Advisory: rank and VORP are unchanged.
+  fitted on the league's past drafts but still rough, so `p_next_lo`/`p_next_hi` show its range; the placeholder team's
+  autodraft and traded picks are not modelled. Advisory: rank and VORP are unchanged.
 - **Shows ADP and the model-vs-market gap** (`adp`, `adp_gap`) next to the projection whenever an ADP file is ingested; a missing or
   unusable ADP file only leaves the columns out (the reason is in `board.attrs["adp_note"]`). The board includes the incoming rookie
   class once `python -m src.ingest.nba_incoming` has run.
