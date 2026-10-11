@@ -221,14 +221,15 @@ def make_lineup(ctx: InSeasonContext, choice: RosterChoice, slate: date, slate_t
     idx["wk_games_left"] = idx["team_id"].map(wk["games_left"]).fillna(0.0)
     idx["b2b"] = idx["team_id"].map(wk["b2b"]).fillna(0).astype(int)
     gl, tg = _season_logs(ctx)
-    boost = status_boost(gl, tg, ctx.injuries, idx["position"], ctx.ros)   # teammate-out boost, ADR 0042
+    # teammate-out boost (ADR 0042): the player's next game only, from a fresh OUT-status snapshot
+    boost = status_boost(gl, tg, ctx.injuries, idx["position"], ctx.ros, as_of=ctx.as_of)
     idx["out_boost_fppg"] = boost.reindex(idx.index).fillna(0.0)
-    fppg = idx["ros_fppg"] + idx["out_boost_fppg"]
-    idx["week_fp"] = idx["wk_games_left"] * idx["avail"] * fppg
+    exp_games = idx["wk_games_left"] * idx["avail"]
+    idx["week_fp"] = exp_games * idx["ros_fppg"] + np.minimum(exp_games, 1.0) * idx["out_boost_fppg"]
     inj = ctx.injuries if ctx.injuries is not None else pd.Series(dtype=object)
     idx["injury"] = [inj.get(p, "") for p in idx.index]
     plays = idx["team_id"].isin(slate_team_ids)
-    idx["today_fp"] = np.where(plays & idx["injury"].ne("OUT"), idx["avail"] * fppg, 0.0)
+    idx["today_fp"] = np.where(plays & idx["injury"].ne("OUT"), idx["avail"] * (idx["ros_fppg"] + idx["out_boost_fppg"]), 0.0)
 
     ids = [p for p in choice.my_ids if p in idx.index]
     week_lineup = lineup_value(roster_frame(idx, ids, "week_fp"), shape, 0.0, ir_ids=choice.ir_ids, n_ir=n_ir)

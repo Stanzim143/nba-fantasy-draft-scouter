@@ -109,9 +109,10 @@ the error shown above.
   So the *ranking* of who benefits is informative, the magnitude is conservative. In-sample by construction (same-season with/without),
   so it validates the shape of the rule, not a forecast.
   These flags are alerts for a human, not model inputs.
-* **Teammate-out boost** ([ADR 0042](adr/0042-teammate-out-boost.md)): when rotation teammates have an ESPN `OUT` status,
-  this week's streaming and the nightly lineup hints use `ros_fppg + out_boost_fppg` (the rule's minute gain x the share of
-  games the absentee played x ROS FP/min x 0.727). Tested pre-registered on 2020-21..2025-26 with the NBA 5 PM injury report:
+* **Teammate-out boost** ([ADR 0042](adr/0042-teammate-out-boost.md)): when rotation teammates have an ESPN `OUT` status in
+  a snapshot fetched within 3 days of `as_of` (stale or undated: no boost), each player's **next game** gets `out_boost_fppg`
+  (the rule's minute gain x the share of games the absentee played x ROS FP/min x 0.727): the next-slate lineup value, and at
+  most one game's worth in this week's streaming and lineup totals. The week horizon did not meet the rule (4/6 seasons). Tested pre-registered on 2020-21..2025-26 with the NBA 5 PM injury report:
   next-game FP MAE -0.05 FP on affected player-games (CI excludes zero, 5/6 seasons); small, so it moves close calls only. A
   teammate absent from the last game without a status (game-log only) failed the test and stays the advisory flag above.
   ROS totals, adds and trades are unchanged. Study: `docs/research/teammate-out-study.md`.

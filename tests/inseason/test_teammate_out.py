@@ -150,3 +150,15 @@ def test_study_baselines_use_earlier_games_only(world):
     on_day_a = a[a["game_date"] <= day].sort_values(key).reset_index(drop=True)
     on_day_b = b[b["game_date"] <= day].sort_values(key).reset_index(drop=True)
     pd.testing.assert_frame_equal(on_day_a[cols], on_day_b[cols])
+
+
+def test_status_boost_needs_a_snapshot_fetched_near_as_of():
+    gl, tg = _logs(SPEC)
+    as_of = gl["game_date"].max()
+    snap = pd.Series({4: "OUT"})
+    assert T.status_boost(gl, tg, snap, POS, _ros(gl), as_of=as_of).empty            # undated: fail safe
+    snap.attrs["fetched_at"] = as_of + pd.Timedelta(days=1)
+    fresh = T.status_boost(gl, tg, snap, POS, _ros(gl), as_of=as_of)
+    assert len(fresh) and (fresh > 0).all()
+    snap.attrs["fetched_at"] = as_of - pd.Timedelta(days=4)
+    assert T.status_boost(gl, tg, snap, POS, _ros(gl), as_of=as_of).empty            # stale

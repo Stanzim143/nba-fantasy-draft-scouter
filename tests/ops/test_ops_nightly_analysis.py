@@ -152,6 +152,7 @@ def test_lineup_hints_use_the_next_slate_and_flag_out_players(tables, prior, thr
     slate = (through + timedelta(days=1)).date()
     star = max(draft[2], key=lambda p: float(ctx.ros.drop_duplicates("player_id").set_index("player_id").at[p, "ros_total_fp"]))
     ctx.injuries = pd.Series({star: "OUT"}, dtype=object)
+    ctx.injuries.attrs["fetched_at"] = pd.Timestamp(through) + pd.Timedelta(hours=30)   # fresh: the boost path runs
     choice = C.resolve_roster(ctx, team_id=3)
     team_ids = set(ctx.ros["team_id"].dropna().astype(int))
     playing = set(list(team_ids)[: len(team_ids) // 2])

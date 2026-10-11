@@ -89,8 +89,8 @@ def find_waivers(ctx: InSeasonContext, choice: RosterChoice, *, top: int = 25, c
     ben = beneficiaries(gl, tg, absent, positions, fp_per_min=fpm) if len(absent) else pd.DataFrame()
     if not len(gl):
         notes.append("no games yet this season: minute trends and injury-replacement flags need game logs")
-    # teammate-out boost (ADR 0042): this week's streaming only, from the current OUT statuses
-    boost = pd.Series(dtype=float) if next_week else status_boost(gl, tg, ctx.injuries, positions, ros)
+    # teammate-out boost (ADR 0042): the next game of this week only, from a fresh OUT-status snapshot
+    boost = pd.Series(dtype=float) if next_week else status_boost(gl, tg, ctx.injuries, positions, ros, as_of=ctx.as_of)
 
     week = pick_week(ctx, next_week=next_week)
     week_label = "no schedule"
@@ -161,10 +161,11 @@ def find_waivers(ctx: InSeasonContext, choice: RosterChoice, *, top: int = 25, c
         if len(week_games_left):
             g = float(week_games_left.get(pid, 0.0))
             b = float(boost.get(pid, 0.0))
-            wk_fp = g * (float(r["ros_fppg"]) + b)
+            wk_fp = g * float(r["ros_fppg"]) + min(g, 1.0) * b          # the boost covers one (the next) game
             drop_wk = 0.0
             if drop is not None and drop >= 0 and drop in week_games_left.index:
-                drop_wk = float(week_games_left[drop] * (idx.at[drop, "ros_fppg"] + float(boost.get(drop, 0.0))))
+                gd = float(week_games_left[drop])
+                drop_wk = gd * float(idx.at[drop, "ros_fppg"]) + min(gd, 1.0) * float(boost.get(drop, 0.0))
             elif drop is None:
                 drop_wk = 0.0
             tid = r["team_id"]

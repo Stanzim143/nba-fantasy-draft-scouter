@@ -19,11 +19,17 @@ effect, a teammate out tonight, is predictable enough to change in-season number
    calibrated (residuals rise with the adjustment at the fitted slope). `beta = 0.727` (`teammate_out.BETA_STATUS`).
 3. **Not adopted for game-log-only absence** (missed the last game, no status): -0.014 [-0.034, +0.008], 3/6. That stays the
    advisory `inherits_from` flag of ADR 0015.
-4. **Where it applies** (`teammate_out.status_boost`, live statuses = the ESPN `OUT` status the nightly job and the waiver
-   finder already load, only when the snapshot is within 3 days of `as_of`):
-   * waiver streaming for **this** matchup week: `week_exp_fp = expected games x (ros_fppg + out_boost_fppg)`, for the
-     candidate and for the drop; next week is unchanged (statuses that far ahead were not tested);
-   * nightly lineup hints (ADR 0018): the week and slate expected FP use the same boosted per-game value;
+4. **Next game only.** The decisive test was next-game. At the week horizon R gave +0.062 [+0.001, +0.131] but positive in
+   only 4/6 seasons, below the rule, so the boost covers each player's next game and never every game left in the week.
+5. **Only from a fresh snapshot.** `context.load_injuries` records when the cached ESPN payload was fetched (the cache
+   file's mtime, as `espn_status` uses) in `injuries.attrs["fetched_at"]`; `status_boost` returns nothing unless that is
+   within 3 days of `as_of`, and nothing when the fetch time is unknown. A stale snapshot would boost teammates of players
+   who are already back.
+6. **Where it applies** (`teammate_out.status_boost`, live statuses = the ESPN `OUT` status the nightly job and the waiver
+   finder already load):
+   * waiver streaming for **this** matchup week: `week_exp_fp = expected games x ros_fppg + min(expected games, 1) x
+     out_boost_fppg`, for the candidate and for the drop; next week is unchanged;
+   * nightly lineup hints (ADR 0018): the next-slate expected FP gets the boost, the week total at most one game's worth;
    * a new `out_boost_fppg` column in both, and "teammate-out +FP/g" in the nightly streaming table.
    ROS totals, ROS ranks, best adds and the trade analyzer are unchanged: the boost is short-horizon only.
 
@@ -34,6 +40,10 @@ effect, a teammate out tonight, is predictable enough to change in-season number
 * ESPN `OUT` is assumed to match the NBA report's `Out` used in the evaluation; the 2025-26 report season is partial (to
   2025-12-22) and was the one losing evaluation season. Recheck after a full 2026-27 season of nightly snapshots with
   `python -m src.inseason.teammate_out_eval`.
+* The pass is sensitive to beta: 0.8 gives 4/6 seasons, and the MAE-optimal value on the evaluation seasons is about
+  0.4-0.5 (not used: choosing it there would tune on the test period). A recheck may well lower it.
+* The game-day 5 PM report can post-date afternoon tip-offs, so a few evaluation games used a status published after the
+  game started. Not measured; likely small (afternoon games are rare outside weekends and holidays).
 * The redistribution rule itself is unchanged; `beta < 1` means its raw FP magnitude is too high per game.
 * Leakage: `tests/inseason/test_teammate_out.py` wrecks every game on or after the target date and asserts the baseline,
   the absences and the adjustment do not move.

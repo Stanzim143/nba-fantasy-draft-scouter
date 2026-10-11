@@ -84,7 +84,8 @@ calibrated and not a generic bias correction (unaffected players sit slightly be
 
 **Verdict.** Real effect, statistically clear and calibrated, but practically small for a single game: the MAE gain is 0.05
 FP on a baseline MAE of 10.0 (about 0.5%), because one game's FP is noisy. It passes the pre-registered rule for
-status-driven absences (R) and is adopted there with beta = 0.727 (ADR 0042). Game-log-only absence (G) fails: a player who
+status-driven absences (R) and is adopted there with beta = 0.727 (ADR 0042), for the next game only: the week horizon was
+positive in only 4/6 seasons, below the rule. Game-log-only absence (G) fails: a player who
 missed the last game often returns, so G stays the existing advisory `inherits_from` flag. The rule's raw magnitude
 over-predicts the per-game FP gain (beta < 1) even though the earlier event study found it under-predicts total redistributed
 minutes: the FP-per-minute of the extra minutes and absentees' returns both pull it down.

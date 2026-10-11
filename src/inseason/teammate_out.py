@@ -81,15 +81,28 @@ def teammate_out_adjustment(gl: pd.DataFrame, tg: pd.DataFrame, absent: pd.DataF
 
 # Fitted on the 2018-19..2019-20 NBA 5 PM injury reports (status OUT), evaluated on 2020-21..2025-26 (ADR 0042).
 BETA_STATUS = 0.727
+MAX_STATUS_AGE = pd.Timedelta(days=3)
+
+
+def snapshot_is_fresh(injuries: pd.Series | None, as_of) -> bool:
+    """True when the status snapshot was fetched within ``MAX_STATUS_AGE`` of ``as_of`` (either side). The fetch time is
+    ``injuries.attrs["fetched_at"]`` (``context.load_injuries`` sets it from the cache file); unknown age is not fresh."""
+    if injuries is None or as_of is None:
+        return False
+    fetched = injuries.attrs.get("fetched_at")
+    if fetched is None or pd.isna(fetched):
+        return False
+    return abs(pd.Timestamp(fetched) - pd.Timestamp(as_of)) <= MAX_STATUS_AGE
 
 
 def status_boost(gl: pd.DataFrame, tg: pd.DataFrame, injuries: pd.Series | None, positions: pd.Series,
-                 ros: pd.DataFrame, *, beta: float = BETA_STATUS) -> pd.Series:
-    """player_id -> FP per game to add to ``ros_fppg`` for the coming game(s) because rotation teammates are ``OUT``.
+                 ros: pd.DataFrame, *, as_of, beta: float = BETA_STATUS) -> pd.Series:
+    """player_id -> FP to add to a player's **next game** because rotation teammates are ``OUT``.
 
-    Status-driven absences only: the game-log-only variant failed the pre-registered test (ADR 0042) and stays an
-    advisory flag (``signals.beneficiaries``). Empty without a status snapshot."""
-    if injuries is None or not len(injuries) or gl.empty:
+    Next game only: the week horizon did not meet the pre-registered rule (ADR 0042). Status-driven absences only: the
+    game-log-only variant failed and stays an advisory flag (``signals.beneficiaries``). Empty without a status snapshot
+    fetched within 3 days of ``as_of`` (a stale or undated snapshot would boost teammates of players already back)."""
+    if injuries is None or not len(injuries) or gl.empty or not snapshot_is_fresh(injuries, as_of):
         return pd.Series(dtype=float)
     adj = teammate_out_adjustment(gl, tg, status_absences(gl, injuries), positions, ros, beta=beta)
     return adj.set_index("player_id")["adj_fppg"] if len(adj) else pd.Series(dtype=float)

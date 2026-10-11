@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -149,18 +150,25 @@ def load_injuries(season: str, data_root: Path | None, id_map: dict[str, int]) -
     sid = season_start(season) + 1
     client = CachedHttpClient((data_root / "raw" / "espn") if data_root else raw_dir("espn"), offline=True,
                               write_fetch_log=False)
+    params = {"view": "kona_player_info", "limit": 600}
     try:
         payload = client.get_json(f"players/{sid}", f"https://lm-api-reads.fantasy.espn.com/apis/v3/games/fba/seasons/{sid}/players",
-                                  {"view": "kona_player_info", "limit": 600})
+                                  params)
     except HttpCacheError:
         return None
+    try:   # when the payload was fetched (cache file mtime, as espn_status uses); ADR 0042 gates on it
+        fetched = pd.Timestamp(datetime.fromtimestamp(client.cache_path(f"players/{sid}", params).stat().st_mtime))
+    except OSError:
+        fetched = None
     out = {}
     for p in payload if isinstance(payload, list) else []:
         pid = id_map.get(str(p.get("id")))
         st = p.get("injuryStatus")
         if pid is not None and st and st != "ACTIVE":
             out[pid] = st
-    return pd.Series(out, dtype="object", name="injury_status")
+    s = pd.Series(out, dtype="object", name="injury_status")
+    s.attrs["fetched_at"] = fetched
+    return s
 
 
 def mapped_teams(league: dict | None, id_map: dict[str, int]) -> tuple[dict[int, dict], int]:

@@ -177,6 +177,8 @@ def test_league_json_id_map_and_injury_cache_are_read_from_the_data_dir(tmp_path
         {"view": "kona_player_info", "limit": 600})
     inj = C.load_injuries(SEASON, base, mp)
     assert dict(inj) == {11: "OUT"}                                   # unmapped ESPN ids and ACTIVE players dropped
+    fetched = inj.attrs["fetched_at"]                                 # the cache file's fetch time (ADR 0042 gate)
+    assert abs(pd.Timestamp.now() - fetched) < pd.Timedelta(minutes=10)
     assert C.load_injuries(SEASON, tmp_path / "none", mp) is None     # nothing cached: no network, no crash
 
 
@@ -230,18 +232,27 @@ def test_streaming_view_uses_games_left_in_the_week_and_excludes_injured_players
 
 
 def test_streaming_adds_the_teammate_out_boost_this_week_only(ctx):
-    """ADR 0042: rotation teammates listed OUT raise a streamer's per-game projection this week, not next week."""
+    """ADR 0042: rotation teammates listed OUT in a fresh snapshot add one game's boost this week, none next week."""
     ch = _mine(ctx)
     base = W.find_waivers(ctx, ch, top=40, candidates=60)
     assert (base.streams["out_boost_fppg"] == 0).all()                # no status snapshot: no boost
     stars = ctx.ros.sort_values("mpg", ascending=False)["player_id"].head(25)
-    ctx.injuries = pd.Series("OUT", index=stars.to_numpy())
+
+    def snapshot(fetched):
+        s = pd.Series("OUT", index=stars.to_numpy())
+        s.attrs["fetched_at"] = fetched
+        return s
+    ctx.injuries = snapshot(ctx.as_of + pd.Timedelta(hours=30))      # the nightly fetch, the morning after as_of
     rep = W.find_waivers(ctx, ch, top=40, candidates=60)
     s = rep.streams
     assert (s["out_boost_fppg"] > 0).any() and (s["out_boost_fppg"] >= 0).all()
-    np.testing.assert_allclose(s["week_exp_fp"], s["week_exp_games"] * (s["ros_fppg"] + s["out_boost_fppg"]), rtol=1e-9)
+    one_game = np.minimum(s["week_exp_games"], 1.0) * s["out_boost_fppg"]      # next game only, not every game left
+    np.testing.assert_allclose(s["week_exp_fp"], s["week_exp_games"] * s["ros_fppg"] + one_game, rtol=1e-9)
     nxt = W.find_waivers(ctx, ch, top=40, candidates=60, next_week=True)
     assert (nxt.streams["out_boost_fppg"] == 0).all()
+    for stale in (ctx.as_of - pd.Timedelta(days=10), ctx.as_of + pd.Timedelta(days=10), None):
+        ctx.injuries = snapshot(stale)                                # stale, from the future, or undated: no boost
+        assert (W.find_waivers(ctx, ch, top=40, candidates=60).streams["out_boost_fppg"] == 0).all()
 
 
 def test_without_a_schedule_the_streaming_view_is_unavailable_but_adds_work(ctx):
