@@ -217,7 +217,7 @@ def test_streaming_view_uses_games_left_in_the_week_and_excludes_injured_players
     assert rep.week is not None and "week" in rep.week_label and len(rep.streams)
     s = rep.streams
     assert s["week_gain_fp"].is_monotonic_decreasing
-    np.testing.assert_allclose(s["week_exp_fp"], s["week_exp_games"] * s["ros_fppg"], rtol=1e-9)
+    np.testing.assert_allclose(s["week_exp_fp"], s["week_exp_games"] * (s["ros_fppg"] + s["out_boost_fppg"]), rtol=1e-9)
     assert (s["week_exp_games"] <= s["week_team_games"] + 1e-9).all()
     victim = int(s["player_id"].iloc[0])
     ctx.injuries = pd.Series({victim: "OUT"})
@@ -227,6 +227,21 @@ def test_streaming_view_uses_games_left_in_the_week_and_excludes_injured_players
     assert all(tab.loc[tab.index == victim, "injury"] == "OUT")
     nxt = W.find_waivers(ctx, ch, top=5, candidates=20, next_week=True)
     assert nxt.week == rep.week + 1
+
+
+def test_streaming_adds_the_teammate_out_boost_this_week_only(ctx):
+    """ADR 0042: rotation teammates listed OUT raise a streamer's per-game projection this week, not next week."""
+    ch = _mine(ctx)
+    base = W.find_waivers(ctx, ch, top=40, candidates=60)
+    assert (base.streams["out_boost_fppg"] == 0).all()                # no status snapshot: no boost
+    stars = ctx.ros.sort_values("mpg", ascending=False)["player_id"].head(25)
+    ctx.injuries = pd.Series("OUT", index=stars.to_numpy())
+    rep = W.find_waivers(ctx, ch, top=40, candidates=60)
+    s = rep.streams
+    assert (s["out_boost_fppg"] > 0).any() and (s["out_boost_fppg"] >= 0).all()
+    np.testing.assert_allclose(s["week_exp_fp"], s["week_exp_games"] * (s["ros_fppg"] + s["out_boost_fppg"]), rtol=1e-9)
+    nxt = W.find_waivers(ctx, ch, top=40, candidates=60, next_week=True)
+    assert (nxt.streams["out_boost_fppg"] == 0).all()
 
 
 def test_without_a_schedule_the_streaming_view_is_unavailable_but_adds_work(ctx):

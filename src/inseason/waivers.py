@@ -41,6 +41,7 @@ from src.inseason.lineup import (
 )
 from src.inseason.schedule import ABBR_OF_TEAM_ID, expected_week_games
 from src.inseason.signals import absent_players, beneficiaries, trend_signals
+from src.inseason.teammate_out import status_boost
 from src.inseason.trade import add_roster_args, replacement_value
 from src.value.replacement import league_shape
 
@@ -88,6 +89,8 @@ def find_waivers(ctx: InSeasonContext, choice: RosterChoice, *, top: int = 25, c
     ben = beneficiaries(gl, tg, absent, positions, fp_per_min=fpm) if len(absent) else pd.DataFrame()
     if not len(gl):
         notes.append("no games yet this season: minute trends and injury-replacement flags need game logs")
+    # teammate-out boost (ADR 0042): this week's streaming only, from the current OUT statuses
+    boost = pd.Series(dtype=float) if next_week else status_boost(gl, tg, ctx.injuries, positions, ros)
 
     week = pick_week(ctx, next_week=next_week)
     week_label = "no schedule"
@@ -157,17 +160,18 @@ def find_waivers(ctx: InSeasonContext, choice: RosterChoice, *, top: int = 25, c
         row["injury"] = "" if ctx.injuries is None else ctx.injuries.get(pid, "")
         if len(week_games_left):
             g = float(week_games_left.get(pid, 0.0))
-            wk_fp = g * float(r["ros_fppg"])
+            b = float(boost.get(pid, 0.0))
+            wk_fp = g * (float(r["ros_fppg"]) + b)
             drop_wk = 0.0
             if drop is not None and drop >= 0 and drop in week_games_left.index:
-                drop_wk = float(week_games_left[drop] * idx.at[drop, "ros_fppg"])
+                drop_wk = float(week_games_left[drop] * (idx.at[drop, "ros_fppg"] + float(boost.get(drop, 0.0))))
             elif drop is None:
                 drop_wk = 0.0
             tid = r["team_id"]
             b2b = int(week_tbl["b2b"].get(tid, 0)) if len(week_tbl) else 0
             off = int(week_tbl["off_night_games"].get(tid, 0)) if len(week_tbl) else 0
             tgm = float(week_tbl["games_left" if not next_week else "games"].get(tid, 0)) if len(week_tbl) else 0.0
-            row.update({"week_team_games": tgm, "week_exp_games": g, "week_exp_fp": wk_fp,
+            row.update({"week_team_games": tgm, "week_exp_games": g, "week_exp_fp": wk_fp, "out_boost_fppg": b,
                         "week_gain_fp": wk_fp - drop_wk, "week_b2b": b2b, "week_off_night": off})
         rows.append(row)
     table = pd.DataFrame(rows)
@@ -200,7 +204,7 @@ def _safe_print(text: str, *, file=None) -> None:
 ADD_COLS = ["name", "position", "team", "ros_fppg", "ros_games", "ros_total_fp", "gain_ros_fp", "drop", "min_delta",
             "rising_minutes", "rising_usage", "inherits_from", "exp_gain_mpg", "injury"]
 STREAM_COLS = ["name", "position", "team", "week_team_games", "week_exp_games", "week_b2b", "week_off_night",
-               "ros_fppg", "week_exp_fp", "week_gain_fp", "drop", "injury"]
+               "ros_fppg", "out_boost_fppg", "week_exp_fp", "week_gain_fp", "drop", "injury"]
 
 
 def main(argv: list[str] | None = None) -> int:

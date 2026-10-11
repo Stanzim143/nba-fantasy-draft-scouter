@@ -189,7 +189,7 @@ def render_report(run: Mapping[str, Any]) -> str:
         if rows:
             out += ["", f"## {label} ({wlabel})", ""]
             out += table(rows, [("name", "player"), ("position", "pos"), ("team", "team"), ("week_exp_games", "exp games"), ("week_b2b", "b2b"),
-                                ("week_off_night", "off-night"), ("week_exp_fp", "exp FP"), ("week_gain_fp", "gain vs drop"), ("drop", "drop"), ("injury", "injury")], 10)
+                                ("week_off_night", "off-night"), ("out_boost_fppg", "teammate-out +FP/g"), ("week_exp_fp", "exp FP"), ("week_gain_fp", "gain vs drop"), ("drop", "drop"), ("injury", "injury")], 10)
 
     # ---- alerts
     out += ["", "# Player alerts"]

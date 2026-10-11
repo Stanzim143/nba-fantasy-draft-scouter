@@ -30,6 +30,7 @@ from src.inseason.context import (
 from src.inseason.lineup import lineup_value, roster_frame
 from src.inseason.schedule import ABBR_OF_TEAM_ID, team_game_days
 from src.inseason.signals import absent_players, beneficiaries, trend_signals
+from src.inseason.teammate_out import status_boost
 from src.inseason.waivers import _season_logs, find_waivers, pick_week
 from src.value.replacement import league_shape
 
@@ -219,11 +220,15 @@ def make_lineup(ctx: InSeasonContext, choice: RosterChoice, slate: date, slate_t
     wk = ctx.weekly[ctx.weekly["week"] == week.week].set_index("team_id")
     idx["wk_games_left"] = idx["team_id"].map(wk["games_left"]).fillna(0.0)
     idx["b2b"] = idx["team_id"].map(wk["b2b"]).fillna(0).astype(int)
-    idx["week_fp"] = idx["wk_games_left"] * idx["avail"] * idx["ros_fppg"]
+    gl, tg = _season_logs(ctx)
+    boost = status_boost(gl, tg, ctx.injuries, idx["position"], ctx.ros)   # teammate-out boost, ADR 0042
+    idx["out_boost_fppg"] = boost.reindex(idx.index).fillna(0.0)
+    fppg = idx["ros_fppg"] + idx["out_boost_fppg"]
+    idx["week_fp"] = idx["wk_games_left"] * idx["avail"] * fppg
     inj = ctx.injuries if ctx.injuries is not None else pd.Series(dtype=object)
     idx["injury"] = [inj.get(p, "") for p in idx.index]
     plays = idx["team_id"].isin(slate_team_ids)
-    idx["today_fp"] = np.where(plays & idx["injury"].ne("OUT"), idx["avail"] * idx["ros_fppg"], 0.0)
+    idx["today_fp"] = np.where(plays & idx["injury"].ne("OUT"), idx["avail"] * fppg, 0.0)
 
     ids = [p for p in choice.my_ids if p in idx.index]
     week_lineup = lineup_value(roster_frame(idx, ids, "week_fp"), shape, 0.0, ir_ids=choice.ir_ids, n_ir=n_ir)
@@ -252,7 +257,8 @@ def make_lineup(ctx: InSeasonContext, choice: RosterChoice, slate: date, slate_t
         rows.append({"player_id": pid, "name": r["name"], "position": r["position"], "team": _abbr(r["team_id"]),
                      "slot_this_week": where, "games_left_week": float(r["wk_games_left"]), "b2b": int(r["b2b"]),
                      "plays_today": bool(int(r["team_id"]) in slate_team_ids), "today_slot": today_slot.get(pid, ""),
-                     "injury": r["injury"], "ros_fppg": float(r["ros_fppg"]), "week_exp_fp": float(r["week_fp"]),
+                     "injury": r["injury"], "ros_fppg": float(r["ros_fppg"]),
+                     "out_boost_fppg": float(r["out_boost_fppg"]), "week_exp_fp": float(r["week_fp"]),
                      "hint": "; ".join(hints)})
     table = pd.DataFrame(rows)
     swaps = []

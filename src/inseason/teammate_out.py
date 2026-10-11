@@ -77,3 +77,19 @@ def teammate_out_adjustment(gl: pd.DataFrame, tg: pd.DataFrame, absent: pd.DataF
     agg["adj_fppg"] = beta * agg["gain_mpg"] * np.nan_to_num(fppm, nan=0.0)
     agg = agg[agg["adj_fppg"] > 0]
     return agg.reset_index()[ADJ_COLS]
+
+
+# Fitted on the 2018-19..2019-20 NBA 5 PM injury reports (status OUT), evaluated on 2020-21..2025-26 (ADR 0042).
+BETA_STATUS = 0.727
+
+
+def status_boost(gl: pd.DataFrame, tg: pd.DataFrame, injuries: pd.Series | None, positions: pd.Series,
+                 ros: pd.DataFrame, *, beta: float = BETA_STATUS) -> pd.Series:
+    """player_id -> FP per game to add to ``ros_fppg`` for the coming game(s) because rotation teammates are ``OUT``.
+
+    Status-driven absences only: the game-log-only variant failed the pre-registered test (ADR 0042) and stays an
+    advisory flag (``signals.beneficiaries``). Empty without a status snapshot."""
+    if injuries is None or not len(injuries) or gl.empty:
+        return pd.Series(dtype=float)
+    adj = teammate_out_adjustment(gl, tg, status_absences(gl, injuries), positions, ros, beta=beta)
+    return adj.set_index("player_id")["adj_fppg"] if len(adj) else pd.Series(dtype=float)

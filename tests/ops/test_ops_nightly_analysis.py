@@ -162,3 +162,5 @@ def test_lineup_hints_use_the_next_slate_and_flag_out_players(tables, prior, thr
     none_play = na.make_lineup(ctx, choice, slate, set(), None)[1]
     assert none_play["today_players"] == 0 and none_play["today_expected_fp"] == 0.0
     assert np.isfinite(meta["week_expected_fp"])
+    # ADR 0042: OUT teammates add a per-game boost to the week's expected FP; the OUT player himself gets none
+    assert (table["out_boost_fppg"] >= 0).all() and row["out_boost_fppg"] == 0.0
