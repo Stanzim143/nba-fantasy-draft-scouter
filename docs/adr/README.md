@@ -51,6 +51,7 @@ Status as of 2026-09-29.
 | [0039](0039-playoff-value.md) | Fantasy-playoff value on the board (advisory `playoff_games` / `playoff_fp`) and a pre-registered late-season availability study | Accepted |
 | [0040](0040-draft-availability.md) | Draft-availability simulator: P(a player is still there at my next pick), advisory, noise fitted on the league's past drafts | Accepted |
 | [0042](0042-teammate-out-boost.md) | Teammate-out boost: OUT rotation teammates raise the short-horizon (streaming, lineup) projection; game-log-only absence stays advisory | Accepted |
+| [0043](0043-layer-audit.md) | Drop-one audit of the board stack: every layer still earns its place; depth and offseason flagged marginal; no default change | Accepted |
 | [0044](0044-take-now-or-wait.md) | Take now or wait: a two-pick lookahead on the draft simulator's draws, advisory, unvalidated | Accepted |
 
 ## Writing a new ADR

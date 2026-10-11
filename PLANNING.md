@@ -271,5 +271,6 @@ Start with simple, explainable models (regularized regression, gradient boosting
   was rejected under its pre-registered rule: rotation veterans play about 7% fewer playoff-week games than the model rate (stable, 6 of 7
   seasons), but pre-season features do not predict who, and the shift worsens MAE. Open: re-check once ESPN publishes the real
   matchup periods (the playoff dates are derived until then).
+- [x] Drop-one audit of the board stack's layers (ADR 0043): all kept; depth and offseason are marginal (the first to drop if maintenance cost matters). Open: give registry models a `fingerprint` so `--cache-dir` works for them.
 - [ ] The wiki ingesters (`wiki_transactions`, `wiki_contracts`, `wiki_coaches`) still keep their raw cache under `default_cache_dir`, ignoring `--data-dir` (ESPN, FantasyPros and NBA clients honor it).
 - [ ] `constraints.txt` pins are bumped by hand: Dependabot most likely does not track a constraints file. Revisit if a pin falls behind.
