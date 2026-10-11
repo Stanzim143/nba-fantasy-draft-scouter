@@ -23,7 +23,7 @@ jobs:
   test:
     name: pytest (${{ matrix.os }}, py${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 45   # windows-latest took 21 min of 30 on 2026-10-07; the suite has grown ~15% since
     strategy:
       fail-fast: false
       matrix:
