@@ -98,8 +98,8 @@ held-out seasons (pooled best `sd_min` 2, `sd_frac` 0.5, `sd_max` 25, `skip` 0.3
 
 Row-weighted overall difference +0.00075 (rule (a): within 0.001); the ADP <= 20 Brier is lower in 3 of 4 seasons (rule (b)), pooled
 -0.0032. **Adopted:** `SKIP_FROM = 15`, `SKIP = 0.2` (kept at the value already reviewed rather than the edge value 0.3; scored directly,
-0.2 from ADP 15 beats the uniform skip overall by 0.0004 and on ADP <= 20 by 0.0056, again 3 of 4 seasons). The ADP 12 and ADP 15
-buckets are where the old uniform skip mattered: the pre-draft chance that Jokic is still there at pick 11 drops from 0.21 to about
-0.04. The unfitted 2026-27-era check (FantasyPros-filled ADP) scores 0.1667 against the old no-skip default's 0.1503, as before the
-change (0.1625): the fit still does not beat the old guess on that season. Not fixed: predictions stay overconfident at the extremes
+0.2 from ADP 15 beats the uniform skip overall by 0.0004 and on ADP <= 20 by 0.0056, again 3 of 4 seasons). Real 2026-27 ADP, pick 1 to pick 11 (ten opponent picks), uniform skip -> gated: Jokic 0.21 -> 0.03, Wembanyama 0.25 -> 0.11,
+Gilgeous-Alexander 0.25 -> 0.11, Doncic 0.28 -> 0.15, Antetokounmpo 0.39 -> 0.34. On 2026-27-era FantasyPros-filled ADP, which is
+not fitted, the adopted setting scores 0.1625, the same as the uniform skip, and the old no-skip default still scores better
+(0.1503): the fit does not beat the old guess on that season. Not fixed: predictions stay overconfident at the extremes
 (predicted 0.95, observed 0.89), and `skip` is still at the edge of what was searched.
