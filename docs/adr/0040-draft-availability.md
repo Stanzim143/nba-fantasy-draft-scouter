@@ -75,8 +75,10 @@ test asserts the board is unchanged.
 
 **Found:** clicking through the app on the real board showed the uniform skip (D2: 20% of drafts pass on a player entirely, applied to
 every player) giving Jokic (ADP 1.4) a 21% chance of lasting ten picks, against about 4% without the skip. The 20% was fitted on the
-relevant mid-round players and never checked at the top. At the actual first decision (picks 1-10 gone, slot 11, next turn #18) the skip
-changes nothing (Flagg 0.61 with and without), so only the pre-draft view of the top players is off.
+relevant mid-round players and never checked at the top. At the actual first decision (picks 1-10 gone, slot 11, next turn #18) the uniform skip and no skip happened to agree (Flagg 0.61
+either way), because the skip also frees picks for others; with the gate the odds of the players at ADP 15 or better on the board then
+fall (Mitchell 0.62 -> 0.53, Flagg 0.62 -> 0.54, Maxey 0.63 -> 0.57: they now have no skip floor) and everyone else stays within 0.02. So the
+gate changes the pre-draft view of the top players a lot, and the first-round decision for the few ADP <= 15 players a little.
 
 **Change:** `skip` applies only to players whose market ADP is above `skip_from`, fitted with the other noise parameters (grid:
 `skip_from` 0/15/30/45, `skip` 0/0.1/0.2/0.3, `sd_min` 2/6, `sd_frac` 0.3/0.5, `sd_max` 25, the neighbourhood of the first fit). The
