@@ -85,3 +85,21 @@ random draws are unchanged (`skip_from` only masks them), so existing seeds give
 **Rule (written before the run):** adopt the gated skip with the pooled-best `skip_from` if (a) the leave-one-season-out Brier over
 all rows is within 0.001 of the uniform skip's or better, and (b) the Brier on rows with market ADP <= 20 is lower than the uniform
 skip's in at least 3 of the 4 held-out seasons. Otherwise keep the uniform skip and label the top-of-draft odds as overstated.
+
+**Result (real drafts 2022-2025, 200 draws per decision point, leave-one-season-out):** the fit picked `skip_from` = 15 in all four
+held-out seasons (pooled best `sd_min` 2, `sd_frac` 0.5, `sd_max` 25, `skip` 0.3 at the grid edge, 0.2 within 0.0001 Brier).
+
+| held out | overall Brier, uniform skip | overall, gated (LOSO fit) | ADP <= 20 Brier, uniform | ADP <= 20, gated |
+|---|---:|---:|---:|---:|
+| 2022-23 | 0.1643 | 0.1646 | 0.1443 | 0.1423 |
+| 2023-24 | 0.1852 | 0.1859 | 0.1791 | 0.1966 |
+| 2024-25 | 0.1915 | 0.1933 | 0.1698 | 0.1487 |
+| 2025-26 | 0.1843 | 0.1840 | 0.1500 | 0.1401 |
+
+Row-weighted overall difference +0.00075 (rule (a): within 0.001); the ADP <= 20 Brier is lower in 3 of 4 seasons (rule (b)), pooled
+-0.0032. **Adopted:** `SKIP_FROM = 15`, `SKIP = 0.2` (kept at the value already reviewed rather than the edge value 0.3; scored directly,
+0.2 from ADP 15 beats the uniform skip overall by 0.0004 and on ADP <= 20 by 0.0056, again 3 of 4 seasons). The ADP 12 and ADP 15
+buckets are where the old uniform skip mattered: the pre-draft chance that Jokic is still there at pick 11 drops from 0.21 to about
+0.04. The unfitted 2026-27-era check (FantasyPros-filled ADP) scores 0.1667 against the old no-skip default's 0.1503, as before the
+change (0.1625): the fit still does not beat the old guess on that season. Not fixed: predictions stay overconfident at the extremes
+(predicted 0.95, observed 0.89), and `skip` is still at the edge of what was searched.

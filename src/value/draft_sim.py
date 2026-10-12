@@ -33,7 +33,7 @@ SD_MIN = 2.0        # fitted on the league's 2021-22 to 2024-25 drafts (ADR 0040
 SD_FRAC = 0.5
 SD_MAX = 25.0
 SKIP = 0.2          # share of drafts in which this league passes on a player entirely (fitted, at the grid edge)
-SKIP_FROM = 0.0     # ... applied only to players whose market ADP is above this (ADR 0040 addendum; set by the fit)
+SKIP_FROM = 15.0    # ... applied only to players whose market ADP is above this: stars are never passed on (ADR 0040 addendum)
 #: (sd_min, sd_frac, sd_max, skip) settings spanning the plausible range; p_next_lo / p_next_hi are the min / max.
 BAND_PARAMS = ((1.0, 0.2, 25.0, 0.0), (2.0, 0.3, 15.0, 0.2), (6.0, 0.5, 40.0, 0.2))
 SKIP_OFFSET = 1e4   # a skipped player's score is pushed past every real pick

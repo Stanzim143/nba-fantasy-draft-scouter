@@ -142,7 +142,7 @@ def _weighted(grid: pd.DataFrame) -> pd.Series:
 
 def run(drafts: list[Draft], n_sims: int = 200) -> dict:
     fit = [d for d in drafts if len(d.adp) and (d.adp["adp_source"] == "espn").all()]
-    combos = list(itertools.product(*(GRID[k] for k in KEYS))) + [OLD_DEFAULT]
+    combos = list(dict.fromkeys([*itertools.product(*(GRID[k] for k in KEYS)), OLD_DEFAULT, UNIFORM_SKIP]))   # references always scored
     cache = {(d.season_id, c): predictions(d, c, n_sims=n_sims) for d in fit for c in combos}
     grid = pd.DataFrame([{"season": s, **dict(zip(KEYS, c)), "brier": brier(df), "n": len(df)}
                          for (s, c), df in cache.items()])

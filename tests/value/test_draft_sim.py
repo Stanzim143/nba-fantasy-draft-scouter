@@ -209,5 +209,24 @@ def test_own_picks_count_as_market_picks_that_skip_the_target():
 
 def test_skip_keeps_a_floor_under_survival():
     m = np.arange(1, 60, dtype=float)
-    p = DS.survival_probabilities(m, [20], n_sims=4000, skip=0.2)[0]
+    p = DS.survival_probabilities(m, [20], n_sims=4000, skip=0.2, skip_from=0.0)[0]   # uniform skip: the first fit
     assert 0.12 < p[0] < 0.28
+
+
+def test_skip_gate_leaves_stars_alone_and_keeps_the_floor_for_the_rest():
+    # ADR 0040 addendum: the league never passes on a star entirely; the skip floor applies past the ADP gate only.
+    m = np.arange(1, 80, dtype=float)
+    gated = DS.survival_probabilities(m, [10, 40], n_sims=6000, seed=2)               # defaults: skip 0.2 from ADP 15
+    none = DS.survival_probabilities(m, [10, 40], n_sims=6000, seed=2, skip=0.0)
+    assert np.abs(gated[:, :5] - none[:, :5]).max() < 0.06          # a top-5 player's odds are close to the no-skip odds
+    assert gated[0, :5].max() <= none[0, :5].max() + 0.01           # ... and never lifted by a skip floor (about 0.2)
+    assert gated[0, 0] < 0.1                                         # a number 1 player does not last ten picks
+    assert gated[1, 40:50].min() > 0.1                               # a mid-round player keeps the skip's floor
+
+
+def test_skip_gate_only_masks_the_draws():
+    m = np.arange(1, 40, dtype=float)
+    no_skip = DS.simulate_order(m, n_sims=500, seed=3, skip=0.0)
+    gated_off = DS.simulate_order(m, n_sims=500, seed=3, skip=0.2, skip_from=1e9)    # gate above every ADP: nobody is skipped
+    assert np.array_equal(no_skip, gated_off)
+    assert not np.array_equal(no_skip, DS.simulate_order(m, n_sims=500, seed=3, skip=0.2, skip_from=15.0))

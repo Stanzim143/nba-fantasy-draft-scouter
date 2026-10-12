@@ -21,7 +21,7 @@ def test_predictions_outcomes_and_loso_run(monkeypatch):
     assert {"p", "y", "k", "c"} <= set(pr.columns) and pr["p"].between(0, 1).all()
     first = pr[(pr["c"] == 1) & (pr["k"] == 3)]
     assert first.sort_values("market")["y"].tolist()[:4] == [0, 0, 0, 1]   # ADP 1-3 gone after 3 picks, ADP 4 (the faller) not
-    monkeypatch.setattr(C, "GRID", {"sd_min": (2.0,), "sd_frac": (0.2, 0.5), "sd_max": (25.0,), "skip": (0.0,)})
+    monkeypatch.setattr(C, "GRID", {"sd_min": (2.0,), "sd_frac": (0.2, 0.5), "sd_max": (25.0,), "skip": (0.0,), "skip_from": (0.0,)})
     res = C.run([d, _draft(2023)], n_sims=50)
     assert len(res["loso"]) == 2 and {"brier_fit", "brier_old_default", "brier_constant"} <= set(res["loso"].columns)
     assert res["never"]["never_drafted_top_n"].tolist() == [0, 0]
