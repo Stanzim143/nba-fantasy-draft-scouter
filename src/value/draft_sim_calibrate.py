@@ -23,12 +23,16 @@ from src.value import draft_sim as DS
 
 SEASONS = (2022, 2023, 2024, 2025, 2026)
 GAPS = (3, 6, 10, 14, 18, 22, 26)    # picks between turns, as in 10-16 team snakes
+TOP_ADP = 20.0                       # 'top of the draft' for the star-only Brier check (the uniform skip's flaw)
 STEP = 3                              # a decision point every STEP picks
 RELEVANT = 30                         # score the RELEVANT lowest-ADP players of the pool at each point
-KEYS = ["sd_min", "sd_frac", "sd_max", "skip"]
-GRID = {"sd_min": (2.0, 6.0), "sd_frac": (0.1, 0.2, 0.3, 0.5), "sd_max": (15.0, 25.0, 40.0),
-        "skip": (0.0, 0.05, 0.1, 0.15, 0.2)}
-OLD_DEFAULT = (1.0, 0.2, 25.0, 0.0)
+KEYS = ["sd_min", "sd_frac", "sd_max", "skip", "skip_from"]
+# The noise grid is the neighbourhood of the first fit (ADR 0040: 2 / 0.5 / 25 / skip 0.2 for every player); the skip now has
+# an ADP gate (``skip_from``): stars are not passed on entirely, and the skip share is searched past the old grid edge.
+GRID = {"sd_min": (2.0, 6.0), "sd_frac": (0.3, 0.5), "sd_max": (25.0,),
+        "skip": (0.0, 0.1, 0.2, 0.3), "skip_from": (0.0, 15.0, 30.0, 45.0)}
+OLD_DEFAULT = (1.0, 0.2, 25.0, 0.0, 0.0)
+UNIFORM_SKIP = (2.0, 0.5, 25.0, 0.2, 0.0)       # the first fit: skip applied to every player
 
 
 @dataclass
@@ -76,7 +80,7 @@ def _pool(d: Draft) -> tuple[np.ndarray, np.ndarray]:
 
 def predictions(d: Draft, params: tuple, *, n_sims: int = 200, seed: int = 0) -> pd.DataFrame:
     """One row per (decision pick c, gap k, relevant player): predicted P(available at c + k) and the outcome."""
-    sd_min, sd_frac, sd_max, skip = params
+    sd_min, sd_frac, sd_max, skip, skip_from = params
     market, when = _pool(d)
     total = int(d.picks["overall"].max())
     rows = []
@@ -88,7 +92,7 @@ def predictions(d: Draft, params: tuple, *, n_sims: int = 200, seed: int = 0) ->
         if not ks or not len(rel):
             continue
         p = DS.survival_probabilities(m, ks, n_sims=n_sims, seed=seed + c, sd_min=sd_min, sd_frac=sd_frac,
-                                      sd_max=sd_max, skip=skip)
+                                      sd_max=sd_max, skip=skip, skip_from=skip_from)
         for j, k in enumerate(ks):
             rows.append(pd.DataFrame({"season": d.season_id, "c": c, "k": k, "market": m[rel], "p": p[j, rel],
                                       "y": (w[rel] >= c + k).astype(float), "never": np.isinf(w[rel])}))
@@ -149,6 +153,9 @@ def run(drafts: list[Draft], n_sims: int = 200) -> dict:
         base = float(held["y"].mean())
         loso.append({"held_out": d.season_id, **{f"fit_{k}": v for k, v in zip(KEYS, best)}, "brier_fit": brier(held),
                      "brier_old_default": brier(cache[(d.season_id, OLD_DEFAULT)]),
+                     "brier_uniform_skip": brier(cache[(d.season_id, UNIFORM_SKIP)]),
+                     **{f"top_{name}": brier(df[df["market"] <= TOP_ADP]) for name, df in
+                        (("fit", held), ("uniform_skip", cache[(d.season_id, UNIFORM_SKIP)]))},
                      "brier_constant": float(((base - held["y"]) ** 2).mean())})
     pooled = _weighted(grid)
     best = pooled.index[0]

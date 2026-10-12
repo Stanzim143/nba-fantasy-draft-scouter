@@ -70,3 +70,18 @@ test asserts the board is unchanged.
   from ADP (median 10 picks earlier than ADP for ADP 48-100 here). The past ADP values are ESPN's season-final averages, not the
   draft-day values. 2022-23's picks are all flagged `autoDraftTypeId` 3 (meaning undocumented); that season fits worst.
 - Recalibrate after the 2026-10-17 draft by adding season 2027 to `--seasons` once ADP for it is in `adp.parquet`.
+
+## Addendum 2026-10-13: the skip is gated by ADP (rule fixed before the run)
+
+**Found:** clicking through the app on the real board showed the uniform skip (D2: 20% of drafts pass on a player entirely, applied to
+every player) giving Jokic (ADP 1.4) a 21% chance of lasting ten picks, against about 4% without the skip. The 20% was fitted on the
+relevant mid-round players and never checked at the top. At the actual first decision (picks 1-10 gone, slot 11, next turn #18) the skip
+changes nothing (Flagg 0.61 with and without), so only the pre-draft view of the top players is off.
+
+**Change:** `skip` applies only to players whose market ADP is above `skip_from`, fitted with the other noise parameters (grid:
+`skip_from` 0/15/30/45, `skip` 0/0.1/0.2/0.3, `sd_min` 2/6, `sd_frac` 0.3/0.5, `sd_max` 25, the neighbourhood of the first fit). The
+random draws are unchanged (`skip_from` only masks them), so existing seeds give the same draws for ungated players.
+
+**Rule (written before the run):** adopt the gated skip with the pooled-best `skip_from` if (a) the leave-one-season-out Brier over
+all rows is within 0.001 of the uniform skip's or better, and (b) the Brier on rows with market ADP <= 20 is lower than the uniform
+skip's in at least 3 of the 4 held-out seasons. Otherwise keep the uniform skip and label the top-of-draft odds as overstated.

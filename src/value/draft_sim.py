@@ -33,6 +33,7 @@ SD_MIN = 2.0        # fitted on the league's 2021-22 to 2024-25 drafts (ADR 0040
 SD_FRAC = 0.5
 SD_MAX = 25.0
 SKIP = 0.2          # share of drafts in which this league passes on a player entirely (fitted, at the grid edge)
+SKIP_FROM = 0.0     # ... applied only to players whose market ADP is above this (ADR 0040 addendum; set by the fit)
 #: (sd_min, sd_frac, sd_max, skip) settings spanning the plausible range; p_next_lo / p_next_hi are the min / max.
 BAND_PARAMS = ((1.0, 0.2, 25.0, 0.0), (2.0, 0.3, 15.0, 0.2), (6.0, 0.5, 40.0, 0.2))
 SKIP_OFFSET = 1e4   # a skipped player's score is pushed past every real pick
@@ -175,7 +176,7 @@ def adp_sd(adp: np.ndarray, *, sd_min: float = SD_MIN, sd_frac: float = SD_FRAC,
 
 def simulate_order(market: np.ndarray, *, n_sims: int = DEFAULT_SIMS, seed: int = DEFAULT_SEED, sd_min: float = SD_MIN,
                    sd_frac: float = SD_FRAC, sd_max: float = SD_MAX, df: float | None = None,
-                   skip: float = SKIP) -> np.ndarray:
+                   skip: float = SKIP, skip_from: float = SKIP_FROM) -> np.ndarray:
     """The simulated drafts themselves: ``order[s, r]`` is the index of the player taken ``r``-th (0-based)
     in draw ``s``, shape ``(n_sims, len(market))``, int32. Shared by :func:`survival_probabilities` and the
     take-now-or-wait panel (``src.value.pick_decision``, ADR 0044) so both read the same draws."""
@@ -185,7 +186,8 @@ def simulate_order(market: np.ndarray, *, n_sims: int = DEFAULT_SIMS, seed: int 
     z = rng.standard_t(df, (n_sims, n)) if df else rng.standard_normal((n_sims, n))  # df: Student-t noise
     scores = market[None, :] + adp_sd(market, sd_min=sd_min, sd_frac=sd_frac, sd_max=sd_max)[None, :] * z
     if skip > 0:  # this league passes on him entirely in a share `skip` of drafts (injury news, points-league fit)
-        scores = scores + SKIP_OFFSET * (rng.random((n_sims, n)) < skip)
+        hit = rng.random((n_sims, n)) < skip          # always drawn, so the rest of the stream does not depend on skip_from
+        scores = scores + SKIP_OFFSET * (hit & (market > skip_from)[None, :])   # stars are never passed on entirely
     return scores.argsort(axis=1).astype(np.int32)
 
 
@@ -202,7 +204,8 @@ def survival_from_order(order: np.ndarray, opponent_picks: Sequence[int]) -> np.
 
 def survival_probabilities(market: np.ndarray, opponent_picks: Sequence[int], *, n_sims: int = DEFAULT_SIMS,
                            seed: int = DEFAULT_SEED, sd_min: float = SD_MIN, sd_frac: float = SD_FRAC,
-                           sd_max: float = SD_MAX, df: float | None = None, skip: float = SKIP) -> np.ndarray:
+                           sd_max: float = SD_MAX, df: float | None = None, skip: float = SKIP,
+                           skip_from: float = SKIP_FROM) -> np.ndarray:
     """``P(player i is still available after k opponent picks)`` for each ``k`` in ``opponent_picks``.
 
     Returns an array of shape ``(len(opponent_picks), len(market))``. The same simulated drafts serve
@@ -211,7 +214,7 @@ def survival_probabilities(market: np.ndarray, opponent_picks: Sequence[int], *,
     if market.size == 0:
         return np.zeros((len(list(opponent_picks)), 0))
     order = simulate_order(market, n_sims=n_sims, seed=seed, sd_min=sd_min, sd_frac=sd_frac, sd_max=sd_max,
-                           df=df, skip=skip)
+                           df=df, skip=skip, skip_from=skip_from)
     return survival_from_order(order, opponent_picks)
 
 
